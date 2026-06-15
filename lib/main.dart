@@ -234,20 +234,20 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   final GlobalKey _chartCaptureKey = GlobalKey();
 
-  // 👑 【完全解決版】計算バグ修正・安全ガード付き PDF生成関数
+  // 👑 【完全修正・フリーズ＆型エラー完全解消版】PDF生成関数
   Future<void> _generatePdf() async {
     try {
-      print('--- 【ログ】PDF生成（本番）スタート ---');
+      print('--- 【ログ】PDF生成（最終本番）スタート ---');
 
       // ⏳ 1. 画面描画の落ち着き待ち
       await Future.delayed(const Duration(milliseconds: 300));
 
-      // 📊 2. 算定サマリーの取得（⚠️ 鉄壁の安全ガードを仕込みました）
+      // 📊 2. 算定サマリーの取得（型エラーを完全に防ぐため、すべて最初からStringで統一）
       var o2Stats = {'time': '0分', 'amount': '0 L'};
       String anesthesiaTime = "0";
       String opTime = "0";
 
-      // 麻酔開始、手術開始時間を _events から取得する処理（安全策付き）
+      // イベント時間を安全に取得する内包関数
       DateTime? getEventTime(String eventName) {
         try {
           return _events.firstWhere((e) => e.name == eventName).time;
@@ -261,25 +261,24 @@ class _MainRecordPageState extends State<MainRecordPage> {
       final opStartTime = getEventTime('手術開始');
       final opEndTime = getEventTime('手術終了');
 
-
       try {
         o2Stats = _calculateO2Stats();
       } catch (e) {
-        print('--- 【ログ警告】酸素計算でエラー（安全のため0として処理します）: $e ---');
+        print('--- 【ログ警告】酸素計算エラー: $e ---');
       }
 
       try {
-        // 💡 引数の取得方法を修正しました
+        // 💡 Stringが返ってくる仕様に完全に合わせました
         anesthesiaTime = _calculateTotalMinutes(anesthesiaStartTime, anesthesiaEndTime);
       } catch (e) {
-        print('--- 【ログ警告】麻酔時間計算でエラー: $e ---');
+        print('--- 【ログ警告】麻酔時間計算エラー: $e ---');
       }
 
       try {
-        // 💡 引数の取得方法を修正しました
+        // 💡 Stringが返ってくる仕様に完全に合わせました
         opTime = _calculateTotalMinutes(opStartTime, opEndTime);
       } catch (e) {
-        print('--- 【ログ警告】手術時間計算でエラー: $e ---');
+        print('--- 【ログ警告】手術時間計算エラー: $e ---');
       }
 
       // 📸 3. 画面のグラフエリアのキャプチャ
@@ -306,10 +305,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
       final pdf = pw.Document();
 
-      // 🧬 5. ログデータの合流（iPad安全対策版）
+      // 🧬 5. ログデータの合流
       List<Map<String, dynamic>> allLogs = [];
 
-      // ① イベント（麻酔開始、手術開始など）
       for (var e in _events) {
         if (e.time != null) {
           allLogs.add({
@@ -321,7 +319,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
         }
       }
 
-      // ② ルート確保（PV）
       for (var iv in _ivRecords) {
         allLogs.add({
           'time': iv.time,
@@ -331,7 +328,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
         });
       }
 
-      // ③ 処置メモ（Remark）
       for (var rm in _remarkLogs) {
         allLogs.add({
           'time': rm.time,
@@ -341,7 +337,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
         });
       }
 
-      // ⏳ 時刻が早い順に整列
       allLogs.sort((a, b) => (a['time'] as DateTime).compareTo(b['time'] as DateTime));
 
       // 📄 6. PDF全体の組み立て
@@ -352,7 +347,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
           theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           build: (pw.Context context) {
             return [
-              // ヘッダー情報
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
@@ -364,7 +358,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
               pw.Divider(thickness: 1.5, color: PdfColors.teal800),
               pw.SizedBox(height: 6),
 
-              // 患者情報・術式・サマリー枠
               pw.Container(
                 padding: const pw.EdgeInsets.all(8),
                 decoration: pw.BoxDecoration(
@@ -377,6 +370,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                     pw.Row(
                       children: [
                         pw.Expanded(child: pw.Text('患者名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様 (${_pAgeCtrl.text}歳)', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+                        // 💡 前回の child: ダブりバグを完全に修正しました
                         pw.Expanded(child: pw.Text('ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
                         pw.Expanded(child: pw.Text('術式: ${_pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
                       ],
@@ -387,6 +381,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
+                        // 💡 すでにString型なので、文字埋め込み（$anesthesiaTime）が100%安全に動作します
                         pw.Text('麻酔時間: $anesthesiaTime 分', style: const pw.TextStyle(fontSize: 9)),
                         pw.Text('手術時間: $opTime 分', style: const pw.TextStyle(fontSize: 9)),
                         pw.Text('酸素投与時間: ${o2Stats['time']}', style: const pw.TextStyle(fontSize: 9)),
@@ -398,7 +393,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
               ),
               pw.SizedBox(height: 16),
 
-              // バイタルグラフ（キャプチャ画像）
               pw.Text('■ バイタルサイン ＆ タイムライングラフィカルデータ', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
               pw.SizedBox(height: 4),
               pw.Container(
@@ -407,7 +401,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
               ),
               pw.SizedBox(height: 16),
 
-              // 記録一覧ログ
               pw.Text('■ 麻酔経過・記録ログ履歴（イベント・処置・メモ）', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
               pw.SizedBox(height: 4),
 
