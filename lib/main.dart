@@ -9,6 +9,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:universal_html/html.dart' as html;
 
 // 💡 共有メニュー（LINEやメール、保存）を起動するために必須のインポートを追加
 import 'package:share_plus/share_plus.dart';
@@ -227,11 +228,15 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   final GlobalKey _chartCaptureKey = GlobalKey();
 
-  // 👑 【完全確定版】ヘッダー連動・グラフ画像・3種ログ限定抽出PDF生成関数
+  // 👑 【PWA完全対応版】ヘッダー連動・グラフ画像・3種ログ限定抽出PDF生成関数
   Future<void> _generatePdf() async {
     try {
       // ⏳ 【iPad対策】ボタンを押した衝撃のあと、画面の描画が落ち着くまで「0.1秒」確実に待ちます
       await Future.delayed(const Duration(milliseconds: 100));
+
+      // 🌟【Web・PWA最重要対策】フォントのダウンロードを何よりも先に最優先で完了させます！
+      final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
+      final fontBold = await PdfGoogleFonts.notoSansJPBold();
 
       // 📸 1. 画面のグラフエリアのみをキャプチャ
       final boundary = _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
@@ -246,8 +251,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
       final pngBytes = byteData!.buffer.asUint8List();
 
       final pdf = pw.Document();
-      final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
-      final fontBold = await PdfGoogleFonts.notoSansJPBold();
 
       // 📊 2. 算定サマリーの取得
       final o2Stats = _calculateO2Stats();
@@ -255,7 +258,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
       final opTime = _calculateTotalMinutes(_opStartTime, _opEndTime);
 
       // 🧬 3. 【iPad安全対策】ログデータの合流
-      // 💡 独自クラスを使わず、Dart標準の Map にすることで iPadOS 上での型消失・データ空っぽバグを防ぎます
       List<Map<String, dynamic>> allLogs = [];
 
       // ① イベント（麻酔開始、手術開始など）
@@ -401,7 +403,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
                         pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('記録内容詳細', style: pw.TextStyle(font: fontBold, fontSize: 9))),
                       ],
                     ),
-                    // 💡 Mapのキーを指定して安全にデータを展開
                     ...allLogs.map((item) {
                       return pw.TableRow(
                         children: [
@@ -426,6 +427,17 @@ class _MainRecordPageState extends State<MainRecordPage> {
       );
 
       final pdfBytes = await pdf.save();
+
+      // 📊 【Web/PWA対応のハイブリッド保存処理】
+      // iPadOS/Chromeのブラウザ制限を完全に回避し、ネイティブにPDFをダウンロード・印刷ストリームに流します。
+      final blob = html.Blob([pdfBytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute("download", '麻酔管理記録_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+
+      // 💡 バックアップとして通常のポップアップ印刷ウィンドウも起動します
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => pdfBytes,
         name: '麻酔管理記録_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}',
