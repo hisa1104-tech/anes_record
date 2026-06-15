@@ -1,3 +1,4 @@
+import 'package:universal_html/html.dart' as html;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -9,7 +10,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:universal_html/html.dart' as html;
 
 // 💡 共有メニュー（LINEやメール、保存）を起動するために必須のインポートを追加
 import 'package:share_plus/share_plus.dart';
@@ -181,17 +181,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
   }
 
 // 💡 ここから貼り付け（保険算定用の自動計算ロジック一式）
-//   String _calculateTotalMinutes(DateTime? start, DateTime? end) {
-//     if (start == null || end == null) return '-- 分';
-//     if (end.isBefore(start)) return '-- 分';
-//     final diff = end.difference(start);
-//     return '${diff.inMinutes} 分';
-//   }
-  // ⭕ 【画面もPDFも同時に赤線が消える完全版】
   String _calculateTotalMinutes(DateTime? start, DateTime? end) {
-    if (start == null || end == null) return "0"; // 💡 未入力なら安全に「0」を返す
-    final minutes = end.difference(start).inMinutes;
-    return minutes.toString(); // 💡 画面側が求めている「文字列（String）」の形にして返します
+    if (start == null || end == null) return '-- 分';
+    if (end.isBefore(start)) return '-- 分';
+    final diff = end.difference(start);
+    return '${diff.inMinutes} 分';
   }
 
   Map<String, String> _calculateO2Stats() {
@@ -234,232 +228,149 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   final GlobalKey _chartCaptureKey = GlobalKey();
 
-  // 👑 【完全修正・フリーズ＆型エラー完全解消版】PDF生成関数
   Future<void> _generatePdf() async {
     try {
-      print('--- 【ログ】PDF生成（最終本番）スタート ---');
+      print('--- 【ログ】シンプルPDF生成スタート ---');
 
-      // ⏳ 1. 画面描画の落ち着き待ち
-      await Future.delayed(const Duration(milliseconds: 300));
+      // ⏳ 画面描画の落ち着き待ち
+      await Future.delayed(const Duration(milliseconds: 200));
 
-      // 📊 2. 算定サマリーの取得（型エラーを完全に防ぐため、すべて最初からStringで統一）
-      var o2Stats = {'time': '0分', 'amount': '0 L'};
-      String anesthesiaTime = "0";
-      String opTime = "0";
-
-      // イベント時間を安全に取得する内包関数
-      DateTime? getEventTime(String eventName) {
-        try {
-          return _events.firstWhere((e) => e.name == eventName).time;
-        } catch (e) {
-          return null;
-        }
-      }
-
-      final anesthesiaStartTime = getEventTime('麻酔開始');
-      final anesthesiaEndTime = getEventTime('麻酔終了');
-      final opStartTime = getEventTime('手術開始');
-      final opEndTime = getEventTime('手術終了');
-
-      try {
-        o2Stats = _calculateO2Stats();
-      } catch (e) {
-        print('--- 【ログ警告】酸素計算エラー: $e ---');
-      }
-
-      try {
-        // 💡 Stringが返ってくる仕様に完全に合わせました
-        anesthesiaTime = _calculateTotalMinutes(anesthesiaStartTime, anesthesiaEndTime);
-      } catch (e) {
-        print('--- 【ログ警告】麻酔時間計算エラー: $e ---');
-      }
-
-      try {
-        // 💡 Stringが返ってくる仕様に完全に合わせました
-        opTime = _calculateTotalMinutes(opStartTime, opEndTime);
-      } catch (e) {
-        print('--- 【ログ警告】手術時間計算エラー: $e ---');
-      }
-
-      // 📸 3. 画面のグラフエリアのキャプチャ
-      final boundary = _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null || boundary.debugNeedsPaint) {
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-
-      final image = _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      final ui.Image? bitMap = await image?.toImage(pixelRatio: 2.0);
-
-      if (bitMap == null) {
-        throw Exception("グラフのキャプチャに失敗しました");
-      }
-
-      final byteData = await bitMap.toByteData(format: ui.ImageByteFormat.png);
-      final pngBytes = byteData!.buffer.asUint8List();
-      print('--- 【ログ】グラフの画像化に成功！ ---');
-
-      // 🌐 4. フォントのダウンロード
+      // 🌐 日本語フォントのダウンロード
       final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
       final fontBold = await PdfGoogleFonts.notoSansJPBold();
-      print('--- 【ログ】日本語フォントの読み込み完了 ---');
 
       final pdf = pw.Document();
 
-      // 🧬 5. ログデータの合流
-      List<Map<String, dynamic>> allLogs = [];
+      // 📊 BMIの計算結果をあらかじめ取得
+      final bmiString = _calculateBmi();
 
-      for (var e in _events) {
-        if (e.time != null) {
-          allLogs.add({
-            'time': e.time!,
-            'category': 'イベント',
-            'content': '(${e.symbol}) ${e.name}',
-            'color': PdfColors.blueGrey800,
-          });
-        }
-      }
-
-      for (var iv in _ivRecords) {
-        allLogs.add({
-          'time': iv.time,
-          'category': '処置',
-          'content': 'PV確保 ${iv.gauge}G (${iv.site}) -> ${iv.isSuccess ? "成功" : "失敗"}',
-          'color': PdfColors.green800,
-        });
-      }
-
-      for (var rm in _remarkLogs) {
-        allLogs.add({
-          'time': rm.time,
-          'category': 'メモ',
-          'content': 'No.${rm.number}: ${rm.text}',
-          'color': PdfColors.orange800,
-        });
-      }
-
-      allLogs.sort((a, b) => (a['time'] as DateTime).compareTo(b['time'] as DateTime));
-
-      // 📄 6. PDF全体の組み立て
+      // 📄 PDF全体の組み立て
       pdf.addPage(
-        pw.MultiPage(
+        pw.Page(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(32),
+          margin: const pw.EdgeInsets.all(40),
           theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           build: (pw.Context context) {
-            return [
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('麻酔管理記録総合レポート', style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColors.teal900)),
-                  pw.Text('出力日時: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-                ],
-              ),
-              pw.SizedBox(height: 4),
-              pw.Divider(thickness: 1.5, color: PdfColors.teal800),
-              pw.SizedBox(height: 6),
-
-              pw.Container(
-                padding: const pw.EdgeInsets.all(8),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.grey50,
-                  border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                ),
-                child: pw.Column(
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // =========================================================================
+                // タイトルヘッダー
+                // =========================================================================
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Row(
-                      children: [
-                        pw.Expanded(child: pw.Text('患者名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様 (${_pAgeCtrl.text}歳)', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                        // 💡 前回の child: ダブりバグを完全に修正しました
-                        pw.Expanded(child: pw.Text('ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                        pw.Expanded(child: pw.Text('術式: ${_pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                      ],
-                    ),
-                    pw.SizedBox(height: 6),
-                    pw.Divider(thickness: 0.5, color: PdfColors.grey300),
-                    pw.SizedBox(height: 4),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        // 💡 すでにString型なので、文字埋め込み（$anesthesiaTime）が100%安全に動作します
-                        pw.Text('麻酔時間: $anesthesiaTime 分', style: const pw.TextStyle(fontSize: 9)),
-                        pw.Text('手術時間: $opTime 分', style: const pw.TextStyle(fontSize: 9)),
-                        pw.Text('酸素投与時間: ${o2Stats['time']}', style: const pw.TextStyle(fontSize: 9)),
-                        pw.Text('酸素総投与量: ${o2Stats['amount']}', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal900)),
-                      ],
-                    ),
+                    pw.Text('麻酔管理記録（患者・手術情報）', style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColors.teal900)),
+                    pw.Text('出力日時: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
                   ],
                 ),
-              ),
-              pw.SizedBox(height: 16),
+                pw.SizedBox(height: 4),
+                pw.Divider(thickness: 1.5, color: PdfColors.teal800),
+                pw.SizedBox(height: 15),
 
-              pw.Text('■ バイタルサイン ＆ タイムライングラフィカルデータ', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
-              pw.SizedBox(height: 4),
-              pw.Container(
-                decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300, width: 0.5)),
-                child: pw.Image(pw.MemoryImage(pngBytes)),
-              ),
-              pw.SizedBox(height: 16),
-
-              pw.Text('■ 麻酔経過・記録ログ履歴（イベント・処置・メモ）', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
-              pw.SizedBox(height: 4),
-
-              if (allLogs.isEmpty)
-                pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('記録されたログはありません。', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)))
-              else
-                pw.Table(
-                  border: pw.TableBorder(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5), horizontalInside: pw.BorderSide(color: PdfColors.grey200, width: 0.5)),
-                  columnWidths: {
-                    0: const pw.FixedColumnWidth(45),
-                    1: const pw.FixedColumnWidth(55),
-                    2: const pw.FlexColumnWidth(),
-                  },
-                  children: [
-                    pw.TableRow(
-                      decoration: const pw.BoxDecoration(color: PdfColors.grey100),
-                      children: [
-                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('時刻', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('区分', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('記録内容詳細', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                      ],
-                    ),
-                    ...allLogs.map((item) {
-                      return pw.TableRow(
+                // =========================================================================
+                // 【1段目】患者基本情報 (ID、氏名、年齢、性別、身長、体重、BMI)
+                // =========================================================================
+                pw.Text('■ 患者基本情報', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
+                pw.SizedBox(height: 4),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey50,
+                    border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                  ),
+                  child: pw.Column(
+                    children: [
+                      pw.Row(
                         children: [
-                          pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(DateFormat('HH:mm').format(item['time'] as DateTime), style: pw.TextStyle(font: fontBold, color: PdfColors.teal700, fontSize: 9))),
-                          pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(item['category'] as String, style: pw.TextStyle(font: fontBold, fontSize: 8.5, color: PdfColors.grey700))),
-                          pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(item['content'] as String, style: pw.TextStyle(fontSize: 9, color: item['color'] as PdfColor))),
+                          pw.Expanded(child: pw.Text('患者ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 10))),
+                          pw.Expanded(child: pw.Text('氏名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様', style: pw.TextStyle(font: fontBold, fontSize: 10))),
+                          pw.Expanded(child: pw.Text('年齢: ${_pAgeCtrl.text.isEmpty ? "ー" : _pAgeCtrl.text} 歳', style: const pw.TextStyle(fontSize: 10))),
+                          // 💡 _pGenderCtrl.text から 既存の _pGender 変数へ修正し、赤線を解消しました
+                          pw.Expanded(child: pw.Text('性別: ${_pGender.isEmpty ? "ー" : _pGender}', style: const pw.TextStyle(fontSize: 10))),
                         ],
-                      );
-                    }).toList(),
-                  ],
+                      ),
+                      pw.SizedBox(height: 8),
+                      pw.Divider(thickness: 0.5, color: PdfColors.grey300),
+                      pw.SizedBox(height: 6),
+                      pw.Row(
+                        children: [
+                          pw.Expanded(child: pw.Text('身長: ${_pHeightCtrl.text.isEmpty ? "ー" : _pHeightCtrl.text} cm', style: const pw.TextStyle(fontSize: 10))),
+                          pw.Expanded(child: pw.Text('体重: ${_pWeightCtrl.text.isEmpty ? "ー" : _pWeightCtrl.text} kg', style: const pw.TextStyle(fontSize: 10))),
+                          // 💡 _pBmiCtrl.text から 既存の _calculateBmi() 関数へ修正し、赤線を解消しました
+                          pw.Expanded(child: pw.Text('BMI: $bmiString', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.teal900))),
+                          pw.Expanded(child: pw.SizedBox()), // 位置調整用の空スペース
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 20),
+
+                // =========================================================================
+                // 【2段目】手術情報 (病名、術式)
+                // =========================================================================
+                pw.Text('■ 診断・手術情報', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
+                pw.SizedBox(height: 4),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey50,
+                    border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('術前診断（病名）: ', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                          // 💡 _pDiagnosisCtrl.text から 既存の _pDiseaseCtrl.text へ修正し、赤線を解消しました
+                          pw.Expanded(child: pw.Text(_pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text, style: const pw.TextStyle(fontSize: 10))),
+                        ],
+                      ),
+                      pw.SizedBox(height: 8),
+                      pw.Divider(thickness: 0.5, color: PdfColors.grey300),
+                      pw.SizedBox(height: 6),
+                      pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('予定術式: ', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                          pw.Expanded(child: pw.Text(_pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text, style: const pw.TextStyle(fontSize: 10))),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
 
-              pw.SizedBox(height: 15),
-              pw.Divider(thickness: 0.5, color: PdfColors.grey400),
-              pw.Align(
-                alignment: pw.Alignment.centerRight,
-                child: pw.Text('麻酔記録システム自動生成ドキュメント', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
-              ),
-            ];
+                pw.Spacer(),
+                pw.Divider(thickness: 0.5, color: PdfColors.grey400),
+                pw.Align(
+                  alignment: pw.Alignment.centerRight,
+                  child: pw.Text('麻酔記録システム自動生成ドキュメント', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
+                ),
+              ],
+            );
           },
         ),
       );
 
       final pdfBytes = await pdf.save();
-      print('--- 【ログ】PDF生成成功。ブラウザに送出します ---');
+      print('--- 【ログ】PDFデータ生成成功。ブラウザに引き渡します ---');
 
       // 🌐 Webブラウザへのダウンロード指示
       final blob = html.Blob([pdfBytes], 'application/pdf');
       final url = html.Url.createObjectUrlFromBlob(blob);
       final anchor = html.AnchorElement(href: url)
-        ..setAttribute("download", '麻酔管理記録_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf')
+        ..setAttribute("download", '麻酔情報_${_pIdCtrl.text}_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf')
         ..click();
       html.Url.revokeObjectUrl(url);
 
-      print('--- 【ログ】すべてのPDF処理が正常終了しました ---');
+      print('--- 【ログ】シンプルPDF処理が正常終了しました ---');
     } catch (e) {
-      print('--- 【ログ】PDF本番生成エラー: $e ---');
+      print('--- 【ログ】シンプルPDF生成エラー: $e ---');
     }
   }
 
