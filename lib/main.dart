@@ -181,11 +181,17 @@ class _MainRecordPageState extends State<MainRecordPage> {
   }
 
 // 💡 ここから貼り付け（保険算定用の自動計算ロジック一式）
+//   String _calculateTotalMinutes(DateTime? start, DateTime? end) {
+//     if (start == null || end == null) return '-- 分';
+//     if (end.isBefore(start)) return '-- 分';
+//     final diff = end.difference(start);
+//     return '${diff.inMinutes} 分';
+//   }
+  // ⭕ 【画面もPDFも同時に赤線が消える完全版】
   String _calculateTotalMinutes(DateTime? start, DateTime? end) {
-    if (start == null || end == null) return '-- 分';
-    if (end.isBefore(start)) return '-- 分';
-    final diff = end.difference(start);
-    return '${diff.inMinutes} 分';
+    if (start == null || end == null) return "0"; // 💡 未入力なら安全に「0」を返す
+    final minutes = end.difference(start).inMinutes;
+    return minutes.toString(); // 💡 画面側が求めている「文字列（String）」の形にして返します
   }
 
   Map<String, String> _calculateO2Stats() {
@@ -228,46 +234,77 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   final GlobalKey _chartCaptureKey = GlobalKey();
 
-  // 👑 【iPad・Web完全対応】フリーズ対策強化版 PDF生成関数
+  // 👑 【完全解決版】計算バグ修正・安全ガード付き PDF生成関数
   Future<void> _generatePdf() async {
     try {
       print('--- 【ログ】PDF生成（本番）スタート ---');
 
-      // ⏳ 1. 【最重要・Web対策】ボタンを押した衝撃が収まり、画面の描画が100%完了するまで「0.3秒」確実に待ちます
+      // ⏳ 1. 画面描画の落ち着き待ち
       await Future.delayed(const Duration(milliseconds: 300));
 
-      // 📸 2. 画面のグラフエリアのキャプチャを試みる
-      final boundary = _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      // 📊 2. 算定サマリーの取得（⚠️ 鉄壁の安全ガードを仕込みました）
+      var o2Stats = {'time': '0分', 'amount': '0 L'};
+      String anesthesiaTime = "0";
+      String opTime = "0";
 
-      // 🛡️ キャプチャの準備が整うまで、さらに少し待つ安全ガード
+      // 麻酔開始、手術開始時間を _events から取得する処理（安全策付き）
+      DateTime? getEventTime(String eventName) {
+        try {
+          return _events.firstWhere((e) => e.name == eventName).time;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      final anesthesiaStartTime = getEventTime('麻酔開始');
+      final anesthesiaEndTime = getEventTime('麻酔終了');
+      final opStartTime = getEventTime('手術開始');
+      final opEndTime = getEventTime('手術終了');
+
+
+      try {
+        o2Stats = _calculateO2Stats();
+      } catch (e) {
+        print('--- 【ログ警告】酸素計算でエラー（安全のため0として処理します）: $e ---');
+      }
+
+      try {
+        // 💡 引数の取得方法を修正しました
+        anesthesiaTime = _calculateTotalMinutes(anesthesiaStartTime, anesthesiaEndTime);
+      } catch (e) {
+        print('--- 【ログ警告】麻酔時間計算でエラー: $e ---');
+      }
+
+      try {
+        // 💡 引数の取得方法を修正しました
+        opTime = _calculateTotalMinutes(opStartTime, opEndTime);
+      } catch (e) {
+        print('--- 【ログ警告】手術時間計算でエラー: $e ---');
+      }
+
+      // 📸 3. 画面のグラフエリアのキャプチャ
+      final boundary = _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null || boundary.debugNeedsPaint) {
-        print('--- 【ログ】キャプチャ準備中のため、再待機します ---');
         await Future.delayed(const Duration(milliseconds: 300));
       }
 
-      // Web環境でもフリーズしにくい安全なキャプチャ実行
-      final image = await _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final image = _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       final ui.Image? bitMap = await image?.toImage(pixelRatio: 2.0);
 
       if (bitMap == null) {
-        throw Exception("グラフのキャプチャに失敗しました（データが空です）");
+        throw Exception("グラフのキャプチャに失敗しました");
       }
 
       final byteData = await bitMap.toByteData(format: ui.ImageByteFormat.png);
       final pngBytes = byteData!.buffer.asUint8List();
       print('--- 【ログ】グラフの画像化に成功！ ---');
 
-      // 🌐 3. フォントのダウンロードをここで確実に完了させる
+      // 🌐 4. フォントのダウンロード
       final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
       final fontBold = await PdfGoogleFonts.notoSansJPBold();
       print('--- 【ログ】日本語フォントの読み込み完了 ---');
 
       final pdf = pw.Document();
-
-      // 📊 4. 算定サマリーの取得
-      final o2Stats = _calculateO2Stats();
-      final anesthesiaTime = _calculateTotalMinutes(_anesthesiaStartTime, _anesthesiaEndTime);
-      final opTime = _calculateTotalMinutes(_opStartTime, _opEndTime);
 
       // 🧬 5. ログデータの合流（iPad安全対策版）
       List<Map<String, dynamic>> allLogs = [];
