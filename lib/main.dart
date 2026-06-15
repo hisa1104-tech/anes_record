@@ -228,223 +228,37 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   final GlobalKey _chartCaptureKey = GlobalKey();
 
-  // 👑 【PWA完全対応版】ヘッダー連動・グラフ画像・3種ログ限定抽出PDF生成関数
+  // 👑 原因特定のための、文字だけテストPDF生成関数（見た目は今までのボタンのまま）
   Future<void> _generatePdf() async {
     try {
-      // ⏳ 【iPad対策】ボタンを押した衝撃のあと、画面の描画が落ち着くまで「0.1秒」確実に待ちます
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      // 🌟【Web・PWA最重要対策】フォントのダウンロードを何よりも先に最優先で完了させます！
-      final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
-      final fontBold = await PdfGoogleFonts.notoSansJPBold();
-
-      // 📸 1. 画面のグラフエリアのみをキャプチャ
-      final boundary = _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-
-      // 🛡️ 【重要】もしキャプチャがまだ準備できていなくても、ログの処理を巻き添えにしないガード
-      if (boundary == null || boundary.debugNeedsPaint) {
-        await Future.delayed(const Duration(milliseconds: 200));
-      }
-
-      ui.Image image = await boundary!.toImage(pixelRatio: 2.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      final pngBytes = byteData!.buffer.asUint8List();
-
+      print('--- 【ログ】テストPDF生成スタート ---');
       final pdf = pw.Document();
 
-      // 📊 2. 算定サマリーの取得
-      final o2Stats = _calculateO2Stats();
-      final anesthesiaTime = _calculateTotalMinutes(_anesthesiaStartTime, _anesthesiaEndTime);
-      final opTime = _calculateTotalMinutes(_opStartTime, _opEndTime);
-
-      // 🧬 3. 【iPad安全対策】ログデータの合流
-      List<Map<String, dynamic>> allLogs = [];
-
-      // ① イベント（麻酔開始、手術開始など）
-      for (var e in _events) {
-        if (e.time != null) {
-          allLogs.add({
-            'time': e.time!,
-            'category': 'イベント',
-            'content': '(${e.symbol}) ${e.name}',
-            'color': PdfColors.blueGrey800,
-          });
-        }
-      }
-
-      // ② ルート確保（PV）
-      for (var iv in _ivRecords) {
-        allLogs.add({
-          'time': iv.time,
-          'category': '処置',
-          'content': 'PV確保 ${iv.gauge}G (${iv.site}) -> ${iv.isSuccess ? "成功" : "失敗"}',
-          'color': PdfColors.green800,
-        });
-      }
-
-      // ③ 処置メモ（Remark）
-      for (var rm in _remarkLogs) {
-        allLogs.add({
-          'time': rm.time,
-          'category': 'メモ',
-          'content': 'No.${rm.number}: ${rm.text}',
-          'color': PdfColors.orange800,
-        });
-      }
-
-      // ⏳ 時刻が早い順にきれいに整列
-      allLogs.sort((a, b) => (a['time'] as DateTime).compareTo(b['time'] as DateTime));
-
-
-      // 📄 4. PDF全体の組み立て
       pdf.addPage(
-        pw.MultiPage(
+        pw.Page(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(32),
-          theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           build: (pw.Context context) {
-            return [
-              // =========================================================================
-              // １．ヘッダーの情報
-              // =========================================================================
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('麻酔管理記録総合レポート', style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColors.teal900)),
-                  pw.Text('出力日時: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-                ],
-              ),
-              pw.SizedBox(height: 4),
-              pw.Divider(thickness: 1.5, color: PdfColors.teal800),
-              pw.SizedBox(height: 6),
-
-              // 📋 患者情報・術式・サマリーのドッキング枠
-              pw.Container(
-                padding: const pw.EdgeInsets.all(8),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.grey50,
-                  border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                ),
-                child: pw.Column(
-                  children: [
-                    pw.Row(
-                      children: [
-                        pw.Expanded(
-                            child: pw.Text(
-                                '患者名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様 (${_pAgeCtrl.text}歳)',
-                                style: pw.TextStyle(font: fontBold, fontSize: 9)
-                            )
-                        ),
-                        pw.Expanded(
-                            child: pw.Text(
-                                'ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}',
-                                style: pw.TextStyle(font: fontBold, fontSize: 9)
-                            )
-                        ),
-                        pw.Expanded(
-                            child: pw.Text(
-                                '術式: ${_pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text}',
-                                style: pw.TextStyle(font: fontBold, fontSize: 9)
-                            )
-                        ),
-                      ],
-                    ),
-                    pw.SizedBox(height: 6),
-                    pw.Divider(thickness: 0.5, color: PdfColors.grey300),
-                    pw.SizedBox(height: 4),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('麻酔時間: $anesthesiaTime 分', style: const pw.TextStyle(fontSize: 9)),
-                        pw.Text('手術時間: $opTime 分', style: const pw.TextStyle(fontSize: 9)),
-                        pw.Text('酸素投与時間: ${o2Stats['time']}', style: const pw.TextStyle(fontSize: 9)),
-                        pw.Text('酸素総投与量: ${o2Stats['amount']}', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal900)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 16),
-
-              // =========================================================================
-              // ２．バイタルグラフとタイムライン（画面キャプチャ）
-              // =========================================================================
-              pw.Text('■ バイタルサイン ＆ タイムライングラフィカルデータ', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
-              pw.SizedBox(height: 4),
-              pw.Container(
-                decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300, width: 0.5)),
-                child: pw.Image(pw.MemoryImage(pngBytes)),
-              ),
-              pw.SizedBox(height: 16),
-
-              // =========================================================================
-              // ３．記録一覧ログ（イベント・処置・メモ限定）
-              // =========================================================================
-              pw.Text('■ 麻酔経過・記録ログ履歴（イベント・処置・メモ）', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
-              pw.SizedBox(height: 4),
-
-              if (allLogs.isEmpty)
-                pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('記録されたログはありません。', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)))
-              else
-                pw.Table(
-                  border: pw.TableBorder(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5), horizontalInside: pw.BorderSide(color: PdfColors.grey200, width: 0.5)),
-                  columnWidths: {
-                    0: const pw.FixedColumnWidth(45),
-                    1: const pw.FixedColumnWidth(55),
-                    2: const pw.FlexColumnWidth(),
-                  },
-                  children: [
-                    pw.TableRow(
-                      decoration: const pw.BoxDecoration(color: PdfColors.grey100),
-                      children: [
-                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('時刻', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('区分', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                        pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text('記録内容詳細', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                      ],
-                    ),
-                    ...allLogs.map((item) {
-                      return pw.TableRow(
-                        children: [
-                          pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(DateFormat('HH:mm').format(item['time'] as DateTime), style: pw.TextStyle(font: fontBold, color: PdfColors.teal700, fontSize: 9))),
-                          pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(item['category'] as String, style: pw.TextStyle(font: fontBold, fontSize: 8.5, color: PdfColors.grey700))),
-                          pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(item['content'] as String, style: pw.TextStyle(fontSize: 9, color: item['color'] as PdfColor))),
-                        ],
-                      );
-                    }).toList(),
-                  ],
-                ),
-
-              pw.SizedBox(height: 15),
-              pw.Divider(thickness: 0.5, color: PdfColors.grey400),
-              pw.Align(
-                alignment: pw.Alignment.centerRight,
-                child: pw.Text('麻酔記録システム自動生成ドキュメント', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
-              ),
-            ];
+            return pw.Center(
+              child: pw.Text('PDF Test Success (English Only)'),
+            );
           },
         ),
       );
 
       final pdfBytes = await pdf.save();
+      print('--- 【ログ】PDFデータ生成成功、ブラウザに引き渡します ---');
 
-      // 📊 【Web/PWA対応のハイブリッド保存処理】
-      // iPadOS/Chromeのブラウザ制限を完全に回避し、ネイティブにPDFをダウンロード・印刷ストリームに流します。
+      // 🌐 Webブラウザへのダウンロード指示
       final blob = html.Blob([pdfBytes], 'application/pdf');
       final url = html.Url.createObjectUrlFromBlob(blob);
       final anchor = html.AnchorElement(href: url)
-        ..setAttribute("download", '麻酔管理記録_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf')
+        ..setAttribute("download", "test.pdf")
         ..click();
       html.Url.revokeObjectUrl(url);
 
-      // 💡 バックアップとして通常のポップアップ印刷ウィンドウも起動します
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdfBytes,
-        name: '麻酔管理記録_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}',
-      );
-
+      print('--- 【ログ】ダウンロード処理完了 ---');
     } catch (e) {
-      print('PDF生成エラー: $e');
+      print('--- 【ログ】テストPDFエラー: $e ---');
     }
   }
 
