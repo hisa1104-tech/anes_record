@@ -399,15 +399,13 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               pw.Expanded(
                                 child: pw.Row(
                                   children: [
-                                    // 📊 【縦軸エリア】 200から0まで20刻みで、通常のpw.Textを等間隔に配置
+                                    // 📊 【縦軸エリア】200から0まで20刻み（上から下に並ぶ）
                                     pw.Container(
                                       width: 20,
-                                      margin: const pw.EdgeInsets.only(bottom: 2), // グラフの最下線と合わせる微調整
                                       child: pw.Column(
-                                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, // 💡 between から spaceBetween に修正
+                                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                         crossAxisAlignment: pw.CrossAxisAlignment.end,
                                         children: List.generate(11, (index) {
-                                          // 200, 180, 160 ... 0
                                           final yVal = 200 - (index * 20);
                                           return pw.Text(
                                             '$yVal',
@@ -418,12 +416,12 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                     ),
                                     pw.SizedBox(width: 4),
 
-                                    // 📈 【グラフ本体】（フォントを一切使わない安全なCustomPaint）
+                                    // 📈 【グラフ本体】
                                     pw.Expanded(
                                       child: pw.CustomPaint(
                                         size: const PdfPoint(0, 0),
                                         painter: (PdfGraphics canvas, PdfPoint size) {
-                                          double computedMaxY = 200; // 縦軸の固定最大値と連動
+                                          double computedMaxY = 200;
                                           double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
 
                                           if (_startTime != null) {
@@ -441,7 +439,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           final double graphWidth = size.x;
                                           final double graphHeight = size.y;
 
-                                          // 背景グリッド（Y軸: 20刻み）
+                                          // 💡 pdfの仕様（左下が0）に合わせて背景グリッドを描画
                                           canvas.setStrokeColor(PdfColors.grey300);
                                           canvas.setLineWidth(0.5);
                                           for (double yVal = 0; yVal <= computedMaxY; yVal += 20) {
@@ -451,7 +449,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             canvas.strokePath();
                                           }
 
-                                          // 背景グリッド（X軸: 時間刻み）
+                                          // 背景グリッド（X軸）
                                           for (double mVal = 0; mVal <= maxMinutes; mVal += interval) {
                                             double xPos = (mVal / maxMinutes) * graphWidth;
                                             canvas.moveTo(xPos, 0);
@@ -467,6 +465,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             if (_startTime == null) continue;
                                             double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
 
+                                            // 💡 【ここを修正】pdfは左下が(0,0)なので、そのまま比率をかけるのが正解です
                                             double x = (m / maxMinutes) * graphWidth;
                                             double ySbp = (r.sbp / computedMaxY) * graphHeight;
                                             double yDbp = (r.dbp / computedMaxY) * graphHeight;
@@ -493,9 +492,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             }
                                             lastSpo2Point = PdfPoint(x, ySpo2);
 
-                                            // 記号描画
+                                            // 記号描画（V と 逆V も pdf 座標系に合わせて修正）
                                             final double hSize = 3.0;
-                                            // sBP: V
+
+                                            // sBP: V (下が頂点)
                                             canvas.setStrokeColor(PdfColors.red600);
                                             canvas.setLineWidth(1.0);
                                             canvas.moveTo(x - hSize, ySbp + hSize);
@@ -503,12 +503,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             canvas.lineTo(x + hSize, ySbp + hSize);
                                             canvas.strokePath();
 
-                                            // dBP: 逆V
+                                            // dBP: 逆V (上が頂点)
                                             canvas.setStrokeColor(PdfColors.red600);
                                             canvas.setLineWidth(1.0);
                                             canvas.moveTo(x - hSize, yDbp - hSize);
                                             canvas.lineTo(x, yDbp + hSize);
-                                            canvas.moveTo(x, yDbp + hSize);
                                             canvas.lineTo(x + hSize, yDbp - hSize);
                                             canvas.strokePath();
 
@@ -530,16 +529,15 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               ),
                               pw.SizedBox(height: 4),
 
-                              // 2. 【下部】横軸（タイムライン時刻）の表示エリア
+                              // 2. 【下部】横軸（タイムライン時刻）
                               if (_startTime != null)
                                 pw.Row(
                                   children: [
-                                    pw.SizedBox(width: 24), // 左側の縦軸数字の幅ぶんスペースを空ける
+                                    pw.SizedBox(width: 24),
                                     pw.Expanded(
                                       child: pw.Row(
-                                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, // 💡 between から spaceBetween に修正
+                                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                         children: List.generate(7, (index) {
-                                          // グラフ全体の時間を等間隔（6分割）にして時刻を表示
                                           double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
                                           if (_startTime != null) {
                                             for (var r in _records) {
@@ -566,7 +564,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
                       pw.SizedBox(width: 8),
 
-                      // --------- 右側 1/3：過去ログ・イベント予定地 ---------
+                      // --------- 右側 1/3：過去ログ ---------
                       pw.Expanded(
                         flex: 1,
                         child: pw.Container(
