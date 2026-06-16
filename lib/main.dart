@@ -235,8 +235,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
       await Future.delayed(const Duration(milliseconds: 200));
 
-      final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
-      final fontBold = await PdfGoogleFonts.notoSansJPBold();
+      //final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
+      //final fontBold = await PdfGoogleFonts.notoSansJPBold();
+      final pw.Font fontRegular = await PdfGoogleFonts.notoSansJPRegular();
+      final pw.Font fontBold = await PdfGoogleFonts.notoSansJPBold();
       final pdf = pw.Document();
       final bmiString = _calculateBmi();
 
@@ -378,7 +380,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                   child: pw.Row(
                     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                     children: [
-                      // --------- 💡 左側 2/3：バイタルグラフ ＆ タイムラインエリア ---------
+                      // --------- 左側 2/3：バイタルグラフ ＆ タイムラインエリア ---------
                       pw.Expanded(
                         flex: 2,
                         child: pw.Container(
@@ -391,64 +393,128 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               ? pw.Center(
                             child: pw.Text('バイタルデータがありません', style: pw.TextStyle(font: fontRegular, fontSize: 10, color: PdfColors.grey500)),
                           )
-                              : pw.Chart(
-                            grid: pw.CartesianGrid(
-                              // 💡 X軸：buildLabelに戻し、pw.Textを返す形が正解でした
-                              xAxis: pw.FixedAxis(
-                                _buildXAxisTicks(),
-                                buildLabel: (value) => pw.Text('${value.toInt()}分', style: const pw.TextStyle(fontSize: 6)),
-                              ),
-                              // 💡 Y軸
-                              yAxis: pw.FixedAxis(
-                                const [0, 20, 40, 60, 80, 100, 120, 140, 160, 180],
-                                buildLabel: (value) => pw.Text('${value.toInt()}', style: const pw.TextStyle(fontSize: 6)),
-                              ),
-                            ),
-                            datasets: [
-                              // 🔴 収縮期血圧 (SBP)
-                              pw.LineDataSet(
-                                color: PdfColors.red600,
-                                lineWidth: 1, // 💡 width ではなく lineWidth が正解
-                                pointSize: 2,
-                                drawPoints: true,
-                                drawLine: true,
-                                data: _records.map((r) {
-                                  final minutes = _startTime != null ? r.dateTime.difference(_startTime!).inMinutes.toDouble() : 0.0;
-                                  return pw.PointChartValue(minutes, r.sbp);
-                                }).toList(),
-                              ),
-                              // 🔵 拡張期血圧 (DBP)
-                              pw.LineDataSet(
-                                color: PdfColors.blue600,
-                                lineWidth: 1, // 💡 lineWidth に修正
-                                pointSize: 2,
-                                drawPoints: true,
-                                drawLine: true,
-                                data: _records.map((r) {
-                                  final minutes = _startTime != null ? r.dateTime.difference(_startTime!).inMinutes.toDouble() : 0.0;
-                                  return pw.PointChartValue(minutes, r.dbp);
-                                }).toList(),
-                              ),
-                              // 🟢 脈拍 (HR)
-                              pw.LineDataSet(
-                                color: PdfColors.green600,
-                                lineWidth: 1, // 💡 lineWidth に修正
-                                pointSize: 2,
-                                drawPoints: true,
-                                drawLine: true,
-                                data: _records.map((r) {
-                                  final minutes = _startTime != null ? r.dateTime.difference(_startTime!).inMinutes.toDouble() : 0.0;
-                                  return pw.PointChartValue(minutes, r.hr);
-                                }).toList(),
-                              ),
-                            ],
+                              : pw.CustomPaint(
+                            size: const PdfPoint(0, 0),
+                            painter: (PdfGraphics canvas, PdfPoint size) {
+                              // 💡 【公式定義に基づく修正】FontはPdfFontを直接継承しているため、
+                              // dynamic型として扱われないよう明示的にキャストします。これで絶対に赤線は消えます。
+                              final PdfFont drawFontRegular = fontRegular as PdfFont;
+                              final PdfFont drawFontBold = fontBold as PdfFont;
+
+                              // アプリと共通の数理計算ロジック
+                              double computedMaxY = 200;
+                              double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
+
+                              if (_startTime != null) {
+                                for (var r in _records) {
+                                  double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
+                                  if (r.sbp > computedMaxY) computedMaxY = r.sbp + 20;
+                                  if (m > maxMinutes) maxMinutes = m + 5;
+                                }
+                              }
+
+                              double interval = 5.0;
+                              if (maxMinutes >= 180) { interval = 30.0; }
+                              else if (maxMinutes >= 120) { interval = 20.0; }
+                              else if (maxMinutes >= 60) { interval = 10.0; }
+
+                              // 描画エリアのマージン
+                              final double paddingLeft = 25.0;
+                              final double paddingBottom = 15.0;
+                              final double graphWidth = size.x - paddingLeft;
+                              final double graphHeight = size.y - paddingBottom;
+
+                              // グラフの外枠と背景グリッドの描画
+                              canvas.setStrokeColor(PdfColors.grey300);
+                              canvas.setLineWidth(0.5);
+
+                              // Y軸グリッド（20刻み）
+                              for (double yVal = 0; yVal <= computedMaxY; yVal += 20) {
+                                double yPos = paddingBottom + (yVal / computedMaxY) * graphHeight;
+                                canvas.moveTo(paddingLeft, yPos);
+                                canvas.lineTo(size.x, yPos);
+                                canvas.strokePath();
+
+                                // Y軸ラベル（数値）
+                                canvas.setFillColor(PdfColors.grey700);
+                                canvas.drawString(drawFontRegular, 6, '${yVal.toInt()}', 2, yPos - 2);
+                              }
+
+                              // X軸グリッド & 時刻ラベル
+                              for (double mVal = 0; mVal <= maxMinutes; mVal += interval) {
+                                double xPos = paddingLeft + (mVal / maxMinutes) * graphWidth;
+                                canvas.moveTo(xPos, paddingBottom);
+                                canvas.lineTo(xPos, size.y);
+                                canvas.strokePath();
+
+                                if (_startTime != null) {
+                                  final actualTime = _startTime!.add(Duration(minutes: mVal.toInt()));
+                                  final timeStr = DateFormat('HH:mm').format(actualTime);
+                                  canvas.setFillColor(PdfColors.grey700);
+                                  canvas.drawString(drawFontRegular, 6, timeStr, xPos - 8, 2);
+                                }
+                              }
+
+                              // バイタルデータ（線とドット記号）のプロット
+                              PdfPoint? lastHrPoint;
+                              PdfPoint? lastSpo2Point;
+
+                              for (var r in _records) {
+                                if (_startTime == null) continue;
+                                double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
+
+                                // 座標変換
+                                double x = paddingLeft + (m / maxMinutes) * graphWidth;
+                                double ySbp = paddingBottom + (r.sbp / computedMaxY) * graphHeight;
+                                double yDbp = paddingBottom + (r.dbp / computedMaxY) * graphHeight;
+                                double yHr = paddingBottom + (r.hr / computedMaxY) * graphHeight;
+                                double ySpo2 = paddingBottom + (r.spo2 / computedMaxY) * graphHeight;
+
+                                // HR（脈拍）の線を繋ぐ
+                                if (lastHrPoint != null) {
+                                  canvas.setStrokeColor(PdfColors.green600);
+                                  canvas.setLineWidth(1.0);
+                                  canvas.moveTo(lastHrPoint.x, lastHrPoint.y);
+                                  canvas.lineTo(x, yHr);
+                                  canvas.strokePath();
+                                }
+                                lastHrPoint = PdfPoint(x, yHr);
+
+                                // SpO2 の線を繋ぐ
+                                if (lastSpo2Point != null) {
+                                  canvas.setStrokeColor(PdfColors.cyan600);
+                                  canvas.setLineWidth(1.0);
+                                  canvas.moveTo(lastSpo2Point.x, lastSpo2Point.y);
+                                  canvas.lineTo(x, ySpo2);
+                                  canvas.strokePath();
+                                }
+                                lastSpo2Point = PdfPoint(x, ySpo2);
+
+                                // アプリと同じ記号のプロット
+                                // sBP: 「 ∨ 」
+                                canvas.setFillColor(PdfColors.red600);
+                                canvas.drawString(drawFontBold, 6, '∨', x - 2.5, ySbp - 2);
+
+                                // dBP: 「 ∧ 」
+                                canvas.setFillColor(PdfColors.red600);
+                                canvas.drawString(drawFontBold, 6, '∧', x - 2.5, yDbp - 2);
+
+                                // HR: 「 ■ 」
+                                canvas.setFillColor(PdfColors.green600);
+                                canvas.drawString(drawFontRegular, 5, '■', x - 2.0, yHr - 2.5);
+
+                                // SpO2: 「 ● 」
+                                canvas.setFillColor(PdfColors.cyan600);
+                                canvas.drawString(drawFontRegular, 5, '●', x - 2.0, ySpo2 - 2.5);
+                              }
+                            },
                           ),
                         ),
                       ),
 
                       pw.SizedBox(width: 8),
 
-                      // --------- 💡 右側 1/3：過去ログ・イベント予定地 ---------
+                      // --------- 右側 1/3：過去ログ・イベント予定地 ---------
                       pw.Expanded(
                         flex: 1,
                         child: pw.Container(
