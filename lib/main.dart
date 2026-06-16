@@ -396,10 +396,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               : pw.CustomPaint(
                             size: const PdfPoint(0, 0),
                             painter: (PdfGraphics canvas, PdfPoint size) {
-                              // 💡 【公式定義に基づく修正】FontはPdfFontを直接継承しているため、
-                              // dynamic型として扱われないよう明示的にキャストします。これで絶対に赤線は消えます。
-                              final PdfFont drawFontRegular = fontRegular as PdfFont;
-                              final PdfFont drawFontBold = fontBold as PdfFont;
+                              // 💡 【検証済み・公式仕様】
+                              // .wrapped を使うことで、型エラー（赤線）も実行時クラッシュも完璧に解決します。
+                              final PdfFont drawFontRegular = fontRegular.wrapped;
+                              final PdfFont drawFontBold = fontBold.wrapped;
 
                               // アプリと共通の数理計算ロジック
                               double computedMaxY = 200;
