@@ -230,25 +230,20 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   Future<void> _generatePdf() async {
     try {
-      print('--- 【ログ】シンプルPDF生成スタート ---');
+      print('--- 【ログ】A4横向きPDF生成スタート ---');
 
-      // ⏳ 画面描画の落ち着き待ち
       await Future.delayed(const Duration(milliseconds: 200));
 
-      // 🌐 日本語フォントのダウンロード
       final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
       final fontBold = await PdfGoogleFonts.notoSansJPBold();
-
       final pdf = pw.Document();
-
-      // 📊 BMIの計算結果をあらかじめ取得
       final bmiString = _calculateBmi();
 
-      // 📄 PDF全体の組み立て
       pdf.addPage(
         pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(40),
+          // 💡 ここで A4 横向き（Landscape）を指定します
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(30), // 1枚に収めるためマージンを少し狭めています
           theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           build: (pw.Context context) {
             return pw.Column(
@@ -260,96 +255,119 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('麻酔管理記録（患者・手術情報）', style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColors.teal900)),
-                    pw.Text('出力日時: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                    pw.Text('麻酔管理記録', style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColors.teal900)),
+                    pw.Text('出力日時: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
                   ],
                 ),
-                pw.SizedBox(height: 4),
+                pw.SizedBox(height: 2),
                 pw.Divider(thickness: 1.5, color: PdfColors.teal800),
-                pw.SizedBox(height: 15),
+                pw.SizedBox(height: 8),
 
                 // =========================================================================
-                // 【1段目】患者基本情報 (ID、氏名、年齢、性別、身長、体重、BMI)
+                // 【上部レイアウト】患者基本情報 ＆ 診断・手術情報を横並び（Row）にする
                 // =========================================================================
-                pw.Text('■ 患者基本情報', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
-                pw.SizedBox(height: 4),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.grey50,
-                    border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                  ),
-                  child: pw.Column(
-                    children: [
-                      pw.Row(
-                        children: [
-                          pw.Expanded(child: pw.Text('患者ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 10))),
-                          pw.Expanded(child: pw.Text('氏名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様', style: pw.TextStyle(font: fontBold, fontSize: 10))),
-                          pw.Expanded(child: pw.Text('年齢: ${_pAgeCtrl.text.isEmpty ? "ー" : _pAgeCtrl.text} 歳', style: const pw.TextStyle(fontSize: 10))),
-                          // 💡 _pGenderCtrl.text から 既存の _pGender 変数へ修正し、赤線を解消しました
-                          pw.Expanded(child: pw.Text('性別: ${_pGender.isEmpty ? "ー" : _pGender}', style: const pw.TextStyle(fontSize: 10))),
-                        ],
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    // 左側：患者基本情報 (flex 4)
+                    pw.Expanded(
+                      flex: 4,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.grey50,
+                          border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text('■ 患者基本情報', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
+                            pw.SizedBox(height: 4),
+                            pw.Row(
+                              children: [
+                                pw.Expanded(child: pw.Text('患者ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+                                pw.Expanded(child: pw.Text('氏名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+                                pw.Expanded(child: pw.Text('年齢: ${_pAgeCtrl.text.isEmpty ? "ー" : _pAgeCtrl.text} 歳', style: const pw.TextStyle(fontSize: 9))),
+                                pw.Expanded(child: pw.Text('性別: ${_pGender.isEmpty ? "ー" : _pGender}', style: const pw.TextStyle(fontSize: 9))),
+                              ],
+                            ),
+                            pw.SizedBox(height: 4),
+                            pw.Divider(thickness: 0.3, color: PdfColors.grey300),
+                            pw.SizedBox(height: 4),
+                            pw.Row(
+                              children: [
+                                pw.Expanded(child: pw.Text('身長: ${_pHeightCtrl.text.isEmpty ? "ー" : _pHeightCtrl.text} cm', style: const pw.TextStyle(fontSize: 9))),
+                                pw.Expanded(child: pw.Text('体重: ${_pWeightCtrl.text.isEmpty ? "ー" : _pWeightCtrl.text} kg', style: const pw.TextStyle(fontSize: 9))),
+                                pw.Expanded(child: pw.Text('BMI: $bmiString', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal900))),
+                                pw.Expanded(child: pw.SizedBox()),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      pw.SizedBox(height: 8),
-                      pw.Divider(thickness: 0.5, color: PdfColors.grey300),
-                      pw.SizedBox(height: 6),
-                      pw.Row(
-                        children: [
-                          pw.Expanded(child: pw.Text('身長: ${_pHeightCtrl.text.isEmpty ? "ー" : _pHeightCtrl.text} cm', style: const pw.TextStyle(fontSize: 10))),
-                          pw.Expanded(child: pw.Text('体重: ${_pWeightCtrl.text.isEmpty ? "ー" : _pWeightCtrl.text} kg', style: const pw.TextStyle(fontSize: 10))),
-                          // 💡 _pBmiCtrl.text から 既存の _calculateBmi() 関数へ修正し、赤線を解消しました
-                          pw.Expanded(child: pw.Text('BMI: $bmiString', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.teal900))),
-                          pw.Expanded(child: pw.SizedBox()), // 位置調整用の空スペース
-                        ],
+                    ),
+                    pw.SizedBox(width: 8),
+
+                    // 右側：診断・手術情報 (flex 3)
+                    pw.Expanded(
+                      flex: 3,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.grey50,
+                          border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                        ),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text('■ 診断・手術情報', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
+                            pw.SizedBox(height: 4),
+                            pw.Row(
+                              crossAxisAlignment:  pw.CrossAxisAlignment.start,
+                              children: [
+                                pw.Text('術前診断: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                pw.Expanded(child: pw.Text(_pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text, style: const pw.TextStyle(fontSize: 9))),
+                              ],
+                            ),
+                            pw.SizedBox(height: 4),
+                            pw.Divider(thickness: 0.3, color: PdfColors.grey300),
+                            pw.SizedBox(height: 4),
+                            pw.Row(
+                              crossAxisAlignment:  pw.CrossAxisAlignment.start,
+                              children: [
+                                pw.Text('予定術式: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                pw.Expanded(child: pw.Text(_pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text, style: const pw.TextStyle(fontSize: 9))),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+
+                // =========================================================================
+                // 【下部レイアウト予定地】
+                // =========================================================================
+                pw.SizedBox(height: 10),
+                pw.Expanded(
+                  child: pw.Container(
+                    width: double.infinity,
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300, style: pw.BorderStyle.dashed, width: 0.5),
+                    ),
+                    alignment: pw.Alignment.center,
+                    child: pw.Text('※ ここに【左2/3: グラフとタイムライン】【右1/3: 過去ログ】が入ります', style: pw.TextStyle(font: fontRegular, fontSize: 10, color: PdfColors.grey500)),
                   ),
                 ),
-                pw.SizedBox(height: 20),
 
-                // =========================================================================
-                // 【2段目】手術情報 (病名、術式)
-                // =========================================================================
-                pw.Text('■ 診断・手術情報', style: pw.TextStyle(font: fontBold, fontSize: 11, color: PdfColors.teal800)),
-                pw.SizedBox(height: 4),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.grey50,
-                    border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Row(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text('術前診断（病名）: ', style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                          // 💡 _pDiagnosisCtrl.text から 既存の _pDiseaseCtrl.text へ修正し、赤線を解消しました
-                          pw.Expanded(child: pw.Text(_pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text, style: const pw.TextStyle(fontSize: 10))),
-                        ],
-                      ),
-                      pw.SizedBox(height: 8),
-                      pw.Divider(thickness: 0.5, color: PdfColors.grey300),
-                      pw.SizedBox(height: 6),
-                      pw.Row(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text('予定術式: ', style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                          pw.Expanded(child: pw.Text(_pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text, style: const pw.TextStyle(fontSize: 10))),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                pw.Spacer(),
+                pw.SizedBox(height: 5),
                 pw.Divider(thickness: 0.5, color: PdfColors.grey400),
                 pw.Align(
                   alignment: pw.Alignment.centerRight,
-                  child: pw.Text('麻酔記録システム自動生成ドキュメント', style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600)),
+                  child: pw.Text('麻酔記録システム自動生成ドキュメント', style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey600)),
                 ),
               ],
             );
@@ -358,9 +376,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
       );
 
       final pdfBytes = await pdf.save();
-      print('--- 【ログ】PDFデータ生成成功。ブラウザに引き渡します ---');
-
-      // 🌐 Webブラウザへのダウンロード指示
       final blob = html.Blob([pdfBytes], 'application/pdf');
       final url = html.Url.createObjectUrlFromBlob(blob);
       final anchor = html.AnchorElement(href: url)
@@ -368,9 +383,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
         ..click();
       html.Url.revokeObjectUrl(url);
 
-      print('--- 【ログ】シンプルPDF処理が正常終了しました ---');
+      print('--- 【ログ】横向きPDF処理が正常終了しました ---');
     } catch (e) {
-      print('--- 【ログ】シンプルPDF生成エラー: $e ---');
+      print('--- 【ログ】横向きPDF生成エラー: $e ---');
     }
   }
 
@@ -1590,7 +1605,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
                                       _alignedDrugRow(
                                           label: 'O2 流量 :',
-                                          child: TextField(controller: _o2Controller, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'L/min', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
+                                          child: TextField(controller: _o2Controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'L/min', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
                                           suffix: Row(children: [
                                             // 💡 投与ボタンを押したらO2入力欄をクリア
                                             Expanded(child: ElevatedButton(
@@ -1609,7 +1624,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
                                       _alignedDrugRow(
                                           label: 'N2O 流量 :',
-                                          child: TextField(controller: _n2oController, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'L/min', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
+                                          child: TextField(controller: _n2oController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'L/min', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
                                           suffix: Row(children: [
                                             // 💡 投与ボタンを押したらN2O入力欄をクリア
                                             Expanded(child: ElevatedButton(
@@ -1629,7 +1644,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                       _alignedDrugRow(
                                           label: 'Propofol civ :',
                                           child: Row(children: [
-                                            Expanded(flex: 3, child: TextField(controller: _propofolInfController, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: '速度', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder()))),
+                                            Expanded(flex: 3, child: TextField(controller: _propofolInfController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: '速度', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder()))),
                                             const SizedBox(width: 2),
                                             DropdownButton<String>(value: _propofolInfUnit, isDense: true, items: ['mg/kg/h', 'mL/h', 'μg/mL'].map((u) => DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontSize: 9)))).toList(), onChanged: (v) => setState(() => _propofolInfUnit = v!)),
                                           ]),
@@ -1651,25 +1666,25 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
                                       _alignedDrugRow(
                                           label: 'Propofol iv :',
-                                          child: TextField(controller: _propofolBolusController, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mg', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
+                                          child: TextField(controller: _propofolBolusController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mg', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
                                           suffix: ElevatedButton(onPressed: () { _addBolus('Propofol', _propofolBolusController.text, 'mg'); _propofolBolusController.clear(); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))), child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)))
                                       ),
 
                                       _alignedDrugRow(
                                           label: 'Midazolam iv :',
-                                          child: TextField(controller: _midazolamController, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mg', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
+                                          child: TextField(controller: _midazolamController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mg', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
                                           suffix: ElevatedButton(onPressed: () { _addBolus('Midazolam', _midazolamController.text, 'mg'); _midazolamController.clear(); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))), child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)))
                                       ),
 
                                       _alignedDrugRow(
                                           label: 'アセリオ iv :',
-                                          child: TextField(controller: _acerioController, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mg', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
+                                          child: TextField(controller: _acerioController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mg', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
                                           suffix: ElevatedButton(onPressed: () { _addBolus('アセリオ', _acerioController.text, 'mg'); _acerioController.clear(); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800, foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))), child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)))
                                       ),
 
                                       _alignedDrugRow(
                                           label: 'ロピオン iv :',
-                                          child: TextField(controller: _ropionController, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mg', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
+                                          child: TextField(controller: _ropionController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mg', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
                                           suffix: ElevatedButton(onPressed: () { _addBolus('ロピオン', _ropionController.text, 'mg'); _ropionController.clear(); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.brown, foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))), child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)))
                                       ),
 
@@ -1678,7 +1693,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           child: Row(children: [
                                             Expanded(child: DropdownButton<String>(value: _selectedLaDrug, isDense: true, isExpanded: true, style: const TextStyle(fontSize: 9.5, color: Colors.black), items: ['オーラ注', 'セプトカイン', 'キシロカイン', 'シタネスト', 'エピリド', 'スキャンドネスト'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => _selectedLaDrug = v!))),
                                             const SizedBox(width: 3),
-                                            SizedBox(width: 42, child: TextField(controller: _laMlController, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mL', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder()))),
+                                            SizedBox(width: 42, child: TextField(controller: _laMlController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'mL', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder()))),
                                           ]),
                                           suffix: ElevatedButton(onPressed: () { if (_laMlController.text.trim().isEmpty) return; setState(() { _initStartTimeIfNeeded(); _bolusLogs.add(BolusLog(id: DateTime.now().toString(), time: DateTime.now(), drugName: 'LA', amount: '$_selectedLaDrug ${_laMlController.text}', unit: 'mL')); }); _laMlController.clear(); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))), child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)))
                                       ),
@@ -1688,7 +1703,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           child: Row(children: [
                                             Expanded(flex: 3, child: TextField(controller: _customDrugNameController, style: const TextStyle(fontSize: 10), decoration: const InputDecoration(hintText: '薬剤名', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder()))),
                                             const SizedBox(width: 2),
-                                            Expanded(flex: 2, child: TextField(controller: _customDrugAmountController, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: '量', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder()))),
+                                            Expanded(flex: 2, child: TextField(controller: _customDrugAmountController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: '量', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder()))),
                                             const SizedBox(width: 2),
                                             DropdownButton<String>(value: _selectedCustomUnit, isDense: true, items: ['mg', 'μg', 'mL', '管'].map((u) => DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontSize: 9)))).toList(), onChanged: (v) => setState(() => _selectedCustomUnit = v!)),
                                           ]),
@@ -1711,7 +1726,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           label: '$_selectedFluidType :',
                                           child: TextField(
                                               controller: _fluidController, // 💡 ステップ0で宣言したコントローラー
-                                              keyboardType: TextInputType.number,
+                                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                               style: const TextStyle(fontSize: 11),
                                               decoration: const InputDecoration(
                                                   hintText: 'mL',
