@@ -371,96 +371,17 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 ),
 
                 // =========================================================================
-                // 【下部レイアウト】左側：バイタルグラフ＆タイムライン / 右側：過去ログ（予定）
+                // 【下部レイアウト予定地】（全体の高さを最大限確保）
                 // =========================================================================
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 8),
                 pw.Expanded(
-                  child: pw.Row(
-                    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-                    children: [
-                      // --------- 💡 左側 2/3：バイタルグラフ ＆ タイムラインエリア ---------
-                      pw.Expanded(
-                        flex: 2,
-                        child: pw.Container(
-                          padding: const pw.EdgeInsets.all(6),
-                          decoration: pw.BoxDecoration(
-                            border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                          ),
-                          child: _records.isEmpty
-                              ? pw.Center(
-                            child: pw.Text('バイタルデータがありません', style: pw.TextStyle(font: fontRegular, fontSize: 10, color: PdfColors.grey500)),
-                          )
-                              : pw.Chart(
-                            grid: pw.CartesianGrid(
-                              // 💡 X軸：buildLabelに戻し、pw.Textを返す形が正解でした
-                              xAxis: pw.FixedAxis(
-                                _buildXAxisTicks(),
-                                buildLabel: (value) => pw.Text('${value.toInt()}分', style: const pw.TextStyle(fontSize: 6)),
-                              ),
-                              // 💡 Y軸
-                              yAxis: pw.FixedAxis(
-                                const [0, 20, 40, 60, 80, 100, 120, 140, 160, 180],
-                                buildLabel: (value) => pw.Text('${value.toInt()}', style: const pw.TextStyle(fontSize: 6)),
-                              ),
-                            ),
-                            datasets: [
-                              // 🔴 収縮期血圧 (SBP)
-                              pw.LineDataSet(
-                                color: PdfColors.red600,
-                                lineWidth: 1, // 💡 width ではなく lineWidth が正解
-                                pointSize: 2,
-                                drawPoints: true,
-                                drawLine: true,
-                                data: _records.map((r) {
-                                  final minutes = _startTime != null ? r.dateTime.difference(_startTime!).inMinutes.toDouble() : 0.0;
-                                  return pw.PointChartValue(minutes, r.sbp);
-                                }).toList(),
-                              ),
-                              // 🔵 拡張期血圧 (DBP)
-                              pw.LineDataSet(
-                                color: PdfColors.blue600,
-                                lineWidth: 1, // 💡 lineWidth に修正
-                                pointSize: 2,
-                                drawPoints: true,
-                                drawLine: true,
-                                data: _records.map((r) {
-                                  final minutes = _startTime != null ? r.dateTime.difference(_startTime!).inMinutes.toDouble() : 0.0;
-                                  return pw.PointChartValue(minutes, r.dbp);
-                                }).toList(),
-                              ),
-                              // 🟢 脈拍 (HR)
-                              pw.LineDataSet(
-                                color: PdfColors.green600,
-                                lineWidth: 1, // 💡 lineWidth に修正
-                                pointSize: 2,
-                                drawPoints: true,
-                                drawLine: true,
-                                data: _records.map((r) {
-                                  final minutes = _startTime != null ? r.dateTime.difference(_startTime!).inMinutes.toDouble() : 0.0;
-                                  return pw.PointChartValue(minutes, r.hr);
-                                }).toList(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      pw.SizedBox(width: 8),
-
-                      // --------- 💡 右側 1/3：過去ログ・イベント予定地 ---------
-                      pw.Expanded(
-                        flex: 1,
-                        child: pw.Container(
-                          decoration: pw.BoxDecoration(
-                            border: pw.Border.all(color: PdfColors.grey300, style: pw.BorderStyle.dashed, width: 0.5),
-                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                          ),
-                          alignment: pw.Alignment.center,
-                          child: pw.Text('※ ここに【過去ログ】が入ります', style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.grey500)),
-                        ),
-                      ),
-                    ],
+                  child: pw.Container(
+                    width: double.infinity,
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300, style: pw.BorderStyle.dashed, width: 0.5),
+                    ),
+                    alignment: pw.Alignment.center,
+                    child: pw.Text('※ ここに【左2/3: グラフとタイムライン】【右1/3: 過去ログ】が入ります', style: pw.TextStyle(font: fontRegular, fontSize: 10, color: PdfColors.grey500)),
                   ),
                 ),
 
@@ -489,20 +410,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
       print('--- 【ログ】横向き3段PDF生成エラー: $e ---');
     }
   }
-// 💡 選択されたタイムライン幅（30分など）に合わせて、5分刻みの目盛りリストを作ります
-  List<double> _buildXAxisTicks() {
-    final List<double> ticks = [];
-    double interval = 5.0; // 基本は5分刻み
 
-    // もしタイムラインが120分など長い場合は10分〜20分刻みに自動調整
-    if (_selectedTimelineMinutes > 60) interval = 10.0;
-    if (_selectedTimelineMinutes > 120) interval = 20.0;
-
-    for (double i = 0; i <= _selectedTimelineMinutes; i += interval) {
-      ticks.add(i);
-    }
-    return ticks;
-  }
 
 
   void _addIvRecord(bool isSuccess) {
