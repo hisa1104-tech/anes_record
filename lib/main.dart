@@ -114,6 +114,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
   final TextEditingController _pDiseaseCtrl = TextEditingController(text: '右下顎第三大臼歯完全埋伏智歯・含歯性嚢胞疑い');
   final TextEditingController _pOpeCtrl = TextEditingController(text: '静脈内鎮静法下・下顎水平埋伏智歯抜歯術及び嚢胞摘出術');
   String _pGender = '男';
+  final TextEditingController _anesthetistCtrl = TextEditingController();
 
   final List<VitalRecord> _records = [];
   DateTime? _startTime;
@@ -256,7 +257,15 @@ class _MainRecordPageState extends State<MainRecordPage> {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text('麻酔管理記録', style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColors.teal900)),
-                    pw.Text('出力日時: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                    // 💡 右側に「出力日時」と「麻酔担当医」を縦に並べる
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text('出力日時: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                        pw.SizedBox(height: 2),
+                        pw.Text('麻酔担当医: ${_anesthetistCtrl.text.isEmpty ? "未入力" : _anesthetistCtrl.text}', style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.grey900)),
+                      ],
+                    ),
                   ],
                 ),
                 pw.SizedBox(height: 2),
@@ -1032,6 +1041,22 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             ]),
                           ),
                           const Spacer(), // 👈 これを入れることで、ボタンを一番右端にシュッと押し寄せます！
+
+                          // 💡 麻酔担当医の入力欄
+                          SizedBox(
+                            width: 180, // 入力欄の横幅
+                            child: TextField(
+                              controller: _anesthetistCtrl,
+                              decoration: const InputDecoration(
+                                labelText: '麻酔担当医',
+                                hintText: '医師名を入力',
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                border: OutlineInputBorder(),
+                              ),
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
 
                           SizedBox(
                             height: 28, // 👈 縦幅を28px（小さめ）にカチッと固定します
