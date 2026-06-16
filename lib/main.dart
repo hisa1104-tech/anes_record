@@ -908,7 +908,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
           SizedBox(
             width: width, height: 24,
             child: TextField(
-              controller: ctrl, keyboardType: isNum ? TextInputType.number : TextInputType.text,
+              controller: ctrl, keyboardType: isNum ? TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
               onChanged: (_) => setState(() {}),
               style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
               decoration: const InputDecoration(
@@ -1042,41 +1042,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           ),
                           const Spacer(), // 👈 これを入れることで、ボタンを一番右端にシュッと押し寄せます！
 
-                          // 💡 麻酔担当医の入力欄（視認性向上・サイズ最適化版）
-                          SizedBox(
-                            height: 28,
-                            width: 180,
-                            child: TextField(
-                              controller: _anesthetistCtrl,
-                              // 💡 入力した文字を「白」にする
-                              style: const TextStyle(fontSize: 12, color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText: '麻酔担当医：医師名を入力',
-                                // 💡 ヒント文字を「薄い白」にする
-                                hintStyle: const TextStyle(color: Colors.white70, fontSize: 11),
-                                isDense: true,
-                                filled: false, // 💡 背景を塗りつぶさず透過させる
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                          // 💡 PDF出力ボタンのすぐ左側に、他とお揃いのデザインで配置
+                          _hdrField('担当医:', _anesthetistCtrl, width: 100),
 
-                                // 💡 通常時の枠線を「薄い白」にする
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(color: Colors.white70, width: 1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                // 💡 入力中（フォーカス時）の枠線を「くっきりした白」にする
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: const BorderSide(color: Colors.white, width: 1.5),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                            ),
-                          ),
-                          // 💡 ここで入力ボックスとボタンの間に 12px の適切なスペースを作ります
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 12), // 💡 ボタンとの間に綺麗な間隔を作ります
 
                           // PDF出力ボタン
                           SizedBox(
-                            height: 28, // 👈 縦幅を28px（小さめ）にカチッと固定します
+                            height: 24, // 👈 縦幅を24px（小さめ）にカチッと固定します
                             child: ElevatedButton.icon(
                               onPressed: _generatePdf,
                               style: ElevatedButton.styleFrom(
