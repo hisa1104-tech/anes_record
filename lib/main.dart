@@ -395,14 +395,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           )
                               : pw.Column(
                             children: [
-                              // 1. 【上部エリア】縦軸数字 ＋ グラフ本体
+                              // 1. 【上部】縦軸の数字 ＋ グラフ本体
                               pw.Expanded(
                                 child: pw.Row(
                                   children: [
-                                    // 📊 【縦軸数字エリア】CustomPaintの計算（200〜0）と綺麗に同期
+                                    // 📊 【縦軸エリア】200から0まで20刻みで綺麗に並べる
                                     pw.Container(
                                       width: 20,
-                                      margin: const pw.EdgeInsets.only(bottom: 10.0), // 💡 グラフのpaddingBottom(10px)の底線と合わせる
+                                      margin: const pw.EdgeInsets.only(bottom: 2), // グラフの底線と合わせる微調整
                                       child: pw.Column(
                                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                         crossAxisAlignment: pw.CrossAxisAlignment.end,
@@ -417,19 +417,21 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                     ),
                                     pw.SizedBox(width: 4),
 
-                                    // 📈 【グラフ本体】（動いていた計算ロジック・座標系をそのまま100%維持）
+                                    // 📈 【グラフ本体】（アプリの LineChartData のロジックを完全再現）
                                     pw.Expanded(
                                       child: pw.CustomPaint(
                                         size: const PdfPoint(0, 0),
                                         painter: (PdfGraphics canvas, PdfPoint size) {
-                                          // アプリと共通の数理計算ロジック
+                                          // --------------------------------------------------
+                                          // 💡 アプリのロジックから完全に移植した数理設定
+                                          // --------------------------------------------------
                                           double computedMaxY = 200;
                                           double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
 
                                           if (_startTime != null) {
                                             for (var r in _records) {
-                                              double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
                                               if (r.sbp > computedMaxY) computedMaxY = r.sbp + 20;
+                                              double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
                                               if (m > maxMinutes) maxMinutes = m + 5;
                                             }
                                           }
@@ -439,33 +441,44 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           else if (maxMinutes >= 120) { interval = 20.0; }
                                           else if (maxMinutes >= 60) { interval = 10.0; }
 
-                                          // 描画エリアのマージン
-                                          final double paddingLeft = 10.0;
-                                          final double paddingBottom = 10.0;
-                                          final double graphWidth = size.x - paddingLeft;
-                                          final double graphHeight = size.y - paddingBottom;
+                                          final double graphWidth = size.x;
+                                          final double graphHeight = size.y;
 
-                                          // グラフの外枠と背景グリッドの描画
+                                          // 💡 【データ座標 ➔ キャンバス座標】への正確な変換関数
+                                          double getX(double minutes) => (minutes / maxMinutes) * graphWidth;
+                                          double getY(double value) => (value / computedMaxY) * graphHeight;
+
+                                          // --------------------------------------------------
+                                          // ① 背景グリッドの描画（アプリの gridData を再現）
+                                          // --------------------------------------------------
                                           canvas.setStrokeColor(PdfColors.grey300);
                                           canvas.setLineWidth(0.5);
 
-                                          // Y軸グリッド（20刻み）
+                                          // 水平グリッド線（horizontalInterval: 20）
                                           for (double yVal = 0; yVal <= computedMaxY; yVal += 20) {
-                                            double yPos = paddingBottom + (yVal / computedMaxY) * graphHeight;
-                                            canvas.moveTo(paddingLeft, yPos);
-                                            canvas.lineTo(size.x, yPos);
+                                            double yPos = getY(yVal);
+                                            canvas.moveTo(0, yPos);
+                                            canvas.lineTo(graphWidth, yPos);
                                             canvas.strokePath();
                                           }
 
-                                          // X軸グリッド
+                                          // 垂直グリッド線（verticalInterval: interval）
                                           for (double mVal = 0; mVal <= maxMinutes; mVal += interval) {
-                                            double xPos = paddingLeft + (mVal / maxMinutes) * graphWidth;
-                                            canvas.moveTo(xPos, paddingBottom);
-                                            canvas.lineTo(xPos, size.y);
+                                            double xPos = getX(mVal);
+                                            canvas.moveTo(xPos, 0);
+                                            canvas.lineTo(xPos, graphHeight);
                                             canvas.strokePath();
                                           }
 
-                                          // バイタルデータ（線と図形記号）のプロット
+                                          // 外枠の描画（borderData の再現）
+                                          canvas.setStrokeColor(PdfColors.grey400);
+                                          canvas.setLineWidth(0.5);
+                                          canvas.drawRect(0, 0, graphWidth, graphHeight);
+                                          canvas.strokePath();
+
+                                          // --------------------------------------------------
+                                          // ② バイタルデータのプロット（アプリの lineBarsData を再現）
+                                          // --------------------------------------------------
                                           PdfPoint? lastHrPoint;
                                           PdfPoint? lastSpo2Point;
 
@@ -473,14 +486,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             if (_startTime == null) continue;
                                             double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
 
-                                            // 座標変換
-                                            double x = paddingLeft + (m / maxMinutes) * graphWidth;
-                                            double ySbp = paddingBottom + (r.sbp / computedMaxY) * graphHeight;
-                                            double yDbp = paddingBottom + (r.dbp / computedMaxY) * graphHeight;
-                                            double yHr = paddingBottom + (r.hr / computedMaxY) * graphHeight;
-                                            double ySpo2 = paddingBottom + (r.spo2 / computedMaxY) * graphHeight;
+                                            // 厳密な座標変換を適用
+                                            double x = getX(m);
+                                            double ySbp = getY(r.sbp.toDouble());
+                                            double yDbp = getY(r.dbp.toDouble());
+                                            double yHr = getY(r.hr.toDouble());
+                                            double ySpo2 = getY(r.spo2.toDouble());
 
-                                            // 1. HR（脈拍）の線を繋ぐ
+                                            // HR（脈拍）の線を繋ぐ（barWidth: 1.2）
                                             if (lastHrPoint != null) {
                                               canvas.setStrokeColor(PdfColors.green600);
                                               canvas.setLineWidth(1.0);
@@ -490,7 +503,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             }
                                             lastHrPoint = PdfPoint(x, yHr);
 
-                                            // 2. SpO2 の線を繋ぐ
+                                            // SpO2 の線を繋ぐ（barWidth: 1.2）
                                             if (lastSpo2Point != null) {
                                               canvas.setStrokeColor(PdfColors.cyan600);
                                               canvas.setLineWidth(1.0);
@@ -500,10 +513,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             }
                                             lastSpo2Point = PdfPoint(x, ySpo2);
 
-                                            // 3. 各種記号を線（パス）で直接描画
-                                            final double hSize = 3.0; // 記号の半分の幅/高さ
+                                            // 💡 AnesthesiaDotPainter の形状ロジックをパスで忠実に再現
+                                            final double hSize = 3.0; // 記号の半幅
 
-                                            // sBP: 「 V 」の形をパスで描画（赤色）
+                                            // sBP: 「 V 」
                                             canvas.setStrokeColor(PdfColors.red600);
                                             canvas.setLineWidth(1.0);
                                             canvas.moveTo(x - hSize, ySbp + hSize);
@@ -511,7 +524,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             canvas.lineTo(x + hSize, ySbp + hSize);
                                             canvas.strokePath();
 
-                                            // dBP: 「 逆V 」の形をパスで描画（赤色）
+                                            // dBP: 「 逆V 」
                                             canvas.setStrokeColor(PdfColors.red600);
                                             canvas.setLineWidth(1.0);
                                             canvas.moveTo(x - hSize, yDbp - hSize);
@@ -519,12 +532,12 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             canvas.lineTo(x + hSize, yDbp - hSize);
                                             canvas.strokePath();
 
-                                            // HR: 「 ■ 」（四角形）を塗りつぶし描画（緑色）
+                                            // HR: 「 ■ 」（四角形を塗りつぶし）
                                             canvas.setFillColor(PdfColors.green600);
                                             canvas.drawRect(x - 2, yHr - 2, 4, 4);
                                             canvas.fillPath();
 
-                                            // SpO2: 「 ● 」（円形）を塗りつぶし描画（シアン色）
+                                            // SpO2: 「 ● 」（円を塗りつぶし）
                                             canvas.setFillColor(PdfColors.cyan600);
                                             canvas.drawEllipse(x, ySpo2, 2.5, 2.5);
                                             canvas.fillPath();
@@ -537,15 +550,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               ),
                               pw.SizedBox(height: 4),
 
-                              // 2. 【下部エリア】横軸（タイムライン時刻）
+                              // 2. 【下部】横軸（タイムライン時刻）の表示エリア
                               if (_startTime != null)
                                 pw.Row(
                                   children: [
-                                    pw.SizedBox(width: 24), // 左側の縦軸数字エリアの幅(20 + 4)と完全に揃える
+                                    pw.SizedBox(width: 24), // 左側の縦軸数字エリアの幅(20+4)に完全に合わせる
                                     pw.Expanded(
                                       child: pw.Row(
                                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                         children: List.generate(7, (index) {
+                                          // アプリの bottomTitles と同じく等間隔で時間ラベルを生成
                                           double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
                                           if (_startTime != null) {
                                             for (var r in _records) {
@@ -572,7 +586,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
                       pw.SizedBox(width: 8),
 
-                      // --------- 右側 1/3：過去ログ・イベント予定地 ---------
+                      // --------- 右側 1/3：過去ログ ---------
                       pw.Expanded(
                         flex: 1,
                         child: pw.Container(
