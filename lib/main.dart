@@ -396,10 +396,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               : pw.CustomPaint(
                             size: const PdfPoint(0, 0),
                             painter: (PdfGraphics canvas, PdfPoint size) {
-                              // 💡 【検証済み・公式仕様】
-                              // .wrapped を使うことで、型エラー（赤線）も実行時クラッシュも完璧に解決します。
-                              final PdfFont drawFontRegular = fontRegular.wrapped;
-                              final PdfFont drawFontBold = fontBold.wrapped;
+                              // 💡 【リセットの要】この内部では font 変数を一切使用しません。
+                              // 文字描画エラーの可能性を根本からゼロにしています。
 
                               // アプリと共通の数理計算ロジック
                               double computedMaxY = 200;
@@ -418,9 +416,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               else if (maxMinutes >= 120) { interval = 20.0; }
                               else if (maxMinutes >= 60) { interval = 10.0; }
 
-                              // 描画エリアのマージン
-                              final double paddingLeft = 25.0;
-                              final double paddingBottom = 15.0;
+                              // 描画エリアのマージン（文字を置かないため、左と下の余白を最小化）
+                              final double paddingLeft = 10.0;
+                              final double paddingBottom = 10.0;
                               final double graphWidth = size.x - paddingLeft;
                               final double graphHeight = size.y - paddingBottom;
 
@@ -434,28 +432,17 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                 canvas.moveTo(paddingLeft, yPos);
                                 canvas.lineTo(size.x, yPos);
                                 canvas.strokePath();
-
-                                // Y軸ラベル（数値）
-                                canvas.setFillColor(PdfColors.grey700);
-                                canvas.drawString(drawFontRegular, 6, '${yVal.toInt()}', 2, yPos - 2);
                               }
 
-                              // X軸グリッド & 時刻ラベル
+                              // X軸グリッド
                               for (double mVal = 0; mVal <= maxMinutes; mVal += interval) {
                                 double xPos = paddingLeft + (mVal / maxMinutes) * graphWidth;
                                 canvas.moveTo(xPos, paddingBottom);
                                 canvas.lineTo(xPos, size.y);
                                 canvas.strokePath();
-
-                                if (_startTime != null) {
-                                  final actualTime = _startTime!.add(Duration(minutes: mVal.toInt()));
-                                  final timeStr = DateFormat('HH:mm').format(actualTime);
-                                  canvas.setFillColor(PdfColors.grey700);
-                                  canvas.drawString(drawFontRegular, 6, timeStr, xPos - 8, 2);
-                                }
                               }
 
-                              // バイタルデータ（線とドット記号）のプロット
+                              // バイタルデータ（線と図形記号）のプロット
                               PdfPoint? lastHrPoint;
                               PdfPoint? lastSpo2Point;
 
@@ -470,7 +457,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                 double yHr = paddingBottom + (r.hr / computedMaxY) * graphHeight;
                                 double ySpo2 = paddingBottom + (r.spo2 / computedMaxY) * graphHeight;
 
-                                // HR（脈拍）の線を繋ぐ
+                                // 1. HR（脈拍）の線を繋ぐ
                                 if (lastHrPoint != null) {
                                   canvas.setStrokeColor(PdfColors.green600);
                                   canvas.setLineWidth(1.0);
@@ -480,7 +467,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                 }
                                 lastHrPoint = PdfPoint(x, yHr);
 
-                                // SpO2 の線を繋ぐ
+                                // 2. SpO2 の線を繋ぐ
                                 if (lastSpo2Point != null) {
                                   canvas.setStrokeColor(PdfColors.cyan600);
                                   canvas.setLineWidth(1.0);
@@ -490,22 +477,34 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                 }
                                 lastSpo2Point = PdfPoint(x, ySpo2);
 
-                                // アプリと同じ記号のプロット
-                                // sBP: 「 ∨ 」
-                                canvas.setFillColor(PdfColors.red600);
-                                canvas.drawString(drawFontBold, 6, '∨', x - 2.5, ySbp - 2);
+                                // 3. 各種記号を線（パス）で直接描画
+                                final double hSize = 3.0; // 記号の半分の幅/高さ
 
-                                // dBP: 「 ∧ 」
-                                canvas.setFillColor(PdfColors.red600);
-                                canvas.drawString(drawFontBold, 6, '∧', x - 2.5, yDbp - 2);
+                                // sBP: 「 V 」の形をパスで描画（赤色）
+                                canvas.setStrokeColor(PdfColors.red600);
+                                canvas.setLineWidth(1.0);
+                                canvas.moveTo(x - hSize, ySbp + hSize); // 左上
+                                canvas.lineTo(x, ySbp - hSize);         // 下中央（頂点）
+                                canvas.lineTo(x + hSize, ySbp + hSize); // 右上
+                                canvas.strokePath();
 
-                                // HR: 「 ■ 」
+                                // dBP: 「 逆V 」の形をパスで描画（赤色）
+                                canvas.setStrokeColor(PdfColors.red600);
+                                canvas.setLineWidth(1.0);
+                                canvas.moveTo(x - hSize, yDbp - hSize); // 左下
+                                canvas.lineTo(x, yDbp + hSize);         // 上中央（頂点）
+                                canvas.lineTo(x + hSize, yDbp - hSize); // 右下
+                                canvas.strokePath();
+
+                                // HR: 「 ■ 」（四角形）を塗りつぶし描画（緑色）
                                 canvas.setFillColor(PdfColors.green600);
-                                canvas.drawString(drawFontRegular, 5, '■', x - 2.0, yHr - 2.5);
+                                canvas.drawRect(x - 2, yHr - 2, 4, 4);
+                                canvas.fillPath();
 
-                                // SpO2: 「 ● 」
+                                // SpO2: 「 ● 」（円形）を塗りつぶし描画（シアン色）
                                 canvas.setFillColor(PdfColors.cyan600);
-                                canvas.drawString(drawFontRegular, 5, '●', x - 2.0, ySpo2 - 2.5);
+                                canvas.drawEllipse(x, ySpo2, 2.5, 2.5);
+                                canvas.fillPath();
                               }
                             },
                           ),
