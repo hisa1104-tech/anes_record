@@ -393,199 +393,128 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               ? pw.Center(
                             child: pw.Text('バイタルデータがありません', style: pw.TextStyle(font: fontRegular, fontSize: 10, color: PdfColors.grey500)),
                           )
-                              : pw.Column(
-                            children: [
-                              // 1. 【上部】縦軸の数字 ＋ グラフ本体
-                              pw.Expanded(
-                                child: pw.Row(
-                                  children: [
-                                    // 📊 【縦軸エリア】200から0まで20刻み
-                                    pw.Container(
-                                      width: 20,
-                                      margin: const pw.EdgeInsets.only(bottom: 2), // グラフの底線と合わせる微調整
-                                      child: pw.Column(
-                                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment: pw.CrossAxisAlignment.end,
-                                        children: List.generate(11, (index) {
-                                          final yVal = 200 - (index * 20);
-                                          return pw.Text(
-                                            '$yVal',
-                                            style: pw.TextStyle(font: fontRegular, fontSize: 6, color: PdfColors.grey700),
-                                          );
-                                        }),
-                                      ),
-                                    ),
-                                    pw.SizedBox(width: 4),
+                              : pw.CustomPaint(
+                            size: const PdfPoint(0, 0),
+                            painter: (PdfGraphics canvas, PdfPoint size) {
+                              // 💡 【リセットの要】この内部では font 変数を一切使用しません。
+                              // 文字描画エラーの可能性を根本からゼロにしています。
 
-                                    // 📈 【グラフ本体】
-                                    pw.Expanded(
-                                      child: pw.LayoutBuilder(
-                                        builder: (context, constraints) {
-                                          // 💡 親の最大高さを取得し、CustomPaintに正しい描画領域を明示的に渡します
-                                          final double availableHeight = constraints?.maxHeight ?? 150.0;
-                                          final double availableWidth = constraints?.maxWidth ?? 300.0;
+                              // アプリと共通の数理計算ロジック
+                              double computedMaxY = 200;
+                              double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
 
-                                          return pw.CustomPaint(
-                                            // 💡 【超重要】(0,0)から、実際の親ウィジェットのサイズに修正
-                                            size: PdfPoint(availableWidth, availableHeight),
-                                            painter: (PdfGraphics canvas, PdfPoint size) {
-                                              // アプリのロジックから完全に移植した数理設定
-                                              double computedMaxY = 200;
-                                              double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
+                              if (_startTime != null) {
+                                for (var r in _records) {
+                                  double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
+                                  // 💡 アプリの最大値拡張ロジックをここに反映
+                                  if (r.sbp > computedMaxY) computedMaxY = r.sbp + 20;
+                                  if (m > maxMinutes) maxMinutes = m + 5;
+                                }
+                              }
 
-                                              if (_startTime != null) {
-                                                for (var r in _records) {
-                                                  if (r.sbp > computedMaxY) computedMaxY = r.sbp + 20;
-                                                  double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
-                                                  if (m > maxMinutes) maxMinutes = m + 5;
-                                                }
-                                              }
+                              double interval = 5.0;
+                              if (maxMinutes >= 180) { interval = 30.0; }
+                              else if (maxMinutes >= 120) { interval = 20.0; }
+                              else if (maxMinutes >= 60) { interval = 10.0; }
 
-                                              double interval = 5.0;
-                                              if (maxMinutes >= 180) { interval = 30.0; }
-                                              else if (maxMinutes >= 120) { interval = 20.0; }
-                                              else if (maxMinutes >= 60) { interval = 10.0; }
+                              // 描画エリアのマージン（文字を置かないため、左と下の余白を最小化）
+                              final double paddingLeft = 10.0;
+                              final double paddingBottom = 10.0;
+                              final double graphWidth = size.x - paddingLeft;
+                              final double graphHeight = size.y - paddingBottom;
 
-                                              final double graphWidth = size.x;
-                                              final double graphHeight = size.y;
+                              // グラフの外枠と背景グリッドの描画
+                              canvas.setStrokeColor(PdfColors.grey300);
+                              canvas.setLineWidth(0.5);
 
-                                              // 💡 アプリのFLChart（およびPDFグラフィックス）の「左下が0,0」の基準に完全連動
-                                              double getX(double minutes) => (minutes / maxMinutes) * graphWidth;
-                                              double getY(double value) => (value / computedMaxY) * graphHeight;
+                              // Y軸グリッド（20刻み）
+                              for (double yVal = 0; yVal <= computedMaxY; yVal += 20) {
+                                double yPos = paddingBottom + (yVal / computedMaxY) * graphHeight;
+                                canvas.moveTo(paddingLeft, yPos);
+                                canvas.lineTo(size.x, yPos);
+                                canvas.strokePath();
+                              }
 
-                                              // 背景グリッド（水平線: 20刻み）
-                                              canvas.setStrokeColor(PdfColors.grey300);
-                                              canvas.setLineWidth(0.5);
-                                              for (double yVal = 0; yVal <= computedMaxY; yVal += 20) {
-                                                double yPos = getY(yVal);
-                                                canvas.moveTo(0, yPos);
-                                                canvas.lineTo(graphWidth, yPos);
-                                                canvas.strokePath();
-                                              }
+                              // X軸グリッド
+                              for (double mVal = 0; mVal <= maxMinutes; mVal += interval) {
+                                double xPos = paddingLeft + (mVal / maxMinutes) * graphWidth;
+                                canvas.moveTo(xPos, paddingBottom);
+                                canvas.lineTo(xPos, size.y);
+                                canvas.strokePath();
+                              }
 
-                                              // 背景グリッド（垂直線）
-                                              for (double mVal = 0; mVal <= maxMinutes; mVal += interval) {
-                                                double xPos = getX(mVal);
-                                                canvas.moveTo(xPos, 0);
-                                                canvas.lineTo(xPos, graphHeight);
-                                                canvas.strokePath();
-                                              }
+                              // バイタルデータ（線と図形記号）のプロット
+                              PdfPoint? lastHrPoint;
+                              PdfPoint? lastSpo2Point;
 
-                                              // 外枠（borderDataの再現）
-                                              canvas.setStrokeColor(PdfColors.grey400);
-                                              canvas.setLineWidth(0.5);
-                                              canvas.drawRect(0, 0, graphWidth, graphHeight);
-                                              canvas.strokePath();
+                              for (var r in _records) {
+                                if (_startTime == null) continue;
+                                double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
 
-                                              // バイタルデータのプロット
-                                              PdfPoint? lastHrPoint;
-                                              PdfPoint? lastSpo2Point;
+                                // 座標変換
+                                double x = paddingLeft + (m / maxMinutes) * graphWidth;
+                                double ySbp = paddingBottom + (r.sbp / computedMaxY) * graphHeight;
+                                double yDbp = paddingBottom + (r.dbp / computedMaxY) * graphHeight;
+                                double yHr = paddingBottom + (r.hr / computedMaxY) * graphHeight;
+                                double ySpo2 = paddingBottom + (r.spo2 / computedMaxY) * graphHeight;
 
-                                              for (var r in _records) {
-                                                if (_startTime == null) continue;
-                                                double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
+                                // 1. HR（脈拍）の線を繋ぐ
+                                if (lastHrPoint != null) {
+                                  canvas.setStrokeColor(PdfColors.green600);
+                                  canvas.setLineWidth(1.0);
+                                  canvas.moveTo(lastHrPoint.x, lastHrPoint.y);
+                                  canvas.lineTo(x, yHr);
+                                  canvas.strokePath();
+                                }
+                                lastHrPoint = PdfPoint(x, yHr);
 
-                                                double x = getX(m);
-                                                double ySbp = getY(r.sbp.toDouble());
-                                                double yDbp = getY(r.dbp.toDouble());
-                                                double yHr = getY(r.hr.toDouble());
-                                                double ySpo2 = getY(r.spo2.toDouble());
+                                // 2. SpO2 の線を繋ぐ
+                                if (lastSpo2Point != null) {
+                                  canvas.setStrokeColor(PdfColors.cyan600);
+                                  canvas.setLineWidth(1.0);
+                                  canvas.moveTo(lastSpo2Point.x, lastSpo2Point.y);
+                                  canvas.lineTo(x, ySpo2);
+                                  canvas.strokePath();
+                                }
+                                lastSpo2Point = PdfPoint(x, ySpo2);
 
-                                                // HRの線（緑）
-                                                if (lastHrPoint != null) {
-                                                  canvas.setStrokeColor(PdfColors.green600);
-                                                  canvas.setLineWidth(1.0);
-                                                  canvas.moveTo(lastHrPoint.x, lastHrPoint.y);
-                                                  canvas.lineTo(x, yHr);
-                                                  canvas.strokePath();
-                                                }
-                                                lastHrPoint = PdfPoint(x, yHr);
+                                // 3. 各種記号を線（パス）で直接描画
+                                final double hSize = 3.0; // 記号の半分の幅/高さ
 
-                                                // SpO2の線（シアン）
-                                                if (lastSpo2Point != null) {
-                                                  canvas.setStrokeColor(PdfColors.cyan600);
-                                                  canvas.setLineWidth(1.0);
-                                                  canvas.moveTo(lastSpo2Point.x, lastSpo2Point.y);
-                                                  canvas.lineTo(x, ySpo2);
-                                                  canvas.strokePath();
-                                                }
-                                                lastSpo2Point = PdfPoint(x, ySpo2);
+                                // sBP: 「 V 」の形をパスで描画（赤色）
+                                canvas.setStrokeColor(PdfColors.red600);
+                                canvas.setLineWidth(1.0);
+                                canvas.moveTo(x - hSize, ySbp + hSize); // 左上
+                                canvas.lineTo(x, ySbp - hSize);         // 下中央（頂点）
+                                canvas.lineTo(x + hSize, ySbp + hSize); // 右上
+                                canvas.strokePath();
 
-                                                // 各種記号の描画
-                                                final double hSize = 3.0;
+                                // dBP: 「 逆V 」の形をパスで描画（赤色）
+                                canvas.setStrokeColor(PdfColors.red600);
+                                canvas.setLineWidth(1.0);
+                                canvas.moveTo(x - hSize, yDbp - hSize); // 左下
+                                canvas.lineTo(x, yDbp + hSize);         // 上中央（頂点）
+                                canvas.lineTo(x + hSize, yDbp - hSize); // 右下
+                                canvas.strokePath();
 
-                                                // sBP: 「 V 」
-                                                canvas.setStrokeColor(PdfColors.red600);
-                                                canvas.setLineWidth(1.0);
-                                                canvas.moveTo(x - hSize, ySbp + hSize);
-                                                canvas.lineTo(x, ySbp - hSize);
-                                                canvas.lineTo(x + hSize, ySbp + hSize);
-                                                canvas.strokePath();
+                                // HR: 「 ■ 」（四角形）を塗りつぶし描画（緑色）
+                                canvas.setFillColor(PdfColors.green600);
+                                canvas.drawRect(x - 2, yHr - 2, 4, 4);
+                                canvas.fillPath();
 
-                                                // dBP: 「 逆V 」
-                                                canvas.setStrokeColor(PdfColors.red600);
-                                                canvas.setLineWidth(1.0);
-                                                canvas.moveTo(x - hSize, yDbp - hSize);
-                                                canvas.lineTo(x, yDbp + hSize);
-                                                canvas.lineTo(x + hSize, yDbp - hSize);
-                                                canvas.strokePath();
-
-                                                // HR: 「 ■ 」
-                                                canvas.setFillColor(PdfColors.green600);
-                                                canvas.drawRect(x - 2, yHr - 2, 4, 4);
-                                                canvas.fillPath();
-
-                                                // SpO2: 「 ● 」
-                                                canvas.setFillColor(PdfColors.cyan600);
-                                                canvas.drawEllipse(x, ySpo2, 2.5, 2.5);
-                                                canvas.fillPath();
-                                              }
-                                            },
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              pw.SizedBox(height: 4),
-
-                              // 2. 【下部】横軸（タイムライン時刻）の表示エリア
-                              if (_startTime != null)
-                                pw.Row(
-                                  children: [
-                                    pw.SizedBox(width: 24), // 左側の縦軸数字エリアの幅(20+4)に完全に合わせる
-                                    pw.Expanded(
-                                      child: pw.Row(
-                                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                        children: List.generate(7, (index) {
-                                          double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
-                                          if (_startTime != null) {
-                                            for (var r in _records) {
-                                              double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
-                                              if (m > maxMinutes) maxMinutes = m + 5;
-                                            }
-                                          }
-
-                                          double currentM = (maxMinutes / 6) * index;
-                                          final actualTime = _startTime!.add(Duration(minutes: currentM.toInt()));
-                                          return pw.Text(
-                                            DateFormat('HH:mm').format(actualTime),
-                                            style: pw.TextStyle(font: fontRegular, fontSize: 6, color: PdfColors.grey700),
-                                          );
-                                        }),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
+                                // SpO2: 「 ● 」（円形）を塗りつぶし描画（シアン色）
+                                canvas.setFillColor(PdfColors.cyan600);
+                                canvas.drawEllipse(x, ySpo2, 2.5, 2.5);
+                                canvas.fillPath();
+                              }
+                            },
                           ),
                         ),
                       ),
 
                       pw.SizedBox(width: 8),
 
-                      // --------- 右側 1/3：過去ログ ---------
+                      // --------- 右側 1/3：過去ログ・イベント予定地 ---------
                       pw.Expanded(
                         flex: 1,
                         child: pw.Container(
