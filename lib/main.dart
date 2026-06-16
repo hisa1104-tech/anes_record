@@ -231,7 +231,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   Future<void> _generatePdf() async {
     try {
-      print('--- 【ログ】A4横向きPDF生成スタート ---');
+      print('--- 【ログ】A4横向き・3段コンパクトPDF生成スタート ---');
 
       await Future.delayed(const Duration(milliseconds: 200));
 
@@ -242,9 +242,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
       pdf.addPage(
         pw.Page(
-          // 💡 ここで A4 横向き（Landscape）を指定します
           pageFormat: PdfPageFormat.a4.landscape,
-          margin: const pw.EdgeInsets.all(30), // 1枚に収めるためマージンを少し狭めています
+          margin: const pw.EdgeInsets.all(25), // 下部エリアを広げるためマージンを少しタイトに調整
           theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           build: (pw.Context context) {
             return pw.Column(
@@ -256,111 +255,125 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('麻酔管理記録', style: pw.TextStyle(font: fontBold, fontSize: 16, color: PdfColors.teal900)),
-                    // 💡 右側に「出力日時」と「麻酔担当医」を縦に並べる
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text('出力日時: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                        pw.SizedBox(height: 2),
-                        pw.Text('麻酔担当医: ${_anesthetistCtrl.text.isEmpty ? "未入力" : _anesthetistCtrl.text}', style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.grey900)),
-                      ],
-                    ),
+                    pw.Text('麻酔管理記録', style: pw.TextStyle(font: fontBold, fontSize: 15, color: PdfColors.teal900)),
+                    pw.Text('出力日時: ${DateFormat('yyyy/MM/dd HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
                   ],
                 ),
                 pw.SizedBox(height: 2),
-                pw.Divider(thickness: 1.5, color: PdfColors.teal800),
-                pw.SizedBox(height: 8),
+                pw.Divider(thickness: 1.2, color: PdfColors.teal800),
+                pw.SizedBox(height: 6),
 
                 // =========================================================================
-                // 【上部レイアウト】患者基本情報 ＆ 診断・手術情報を横並び（Row）にする
+                // 【上部レイアウト】3段構成のコンパクト情報エリア
                 // =========================================================================
-                pw.Row(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    // 左側：患者基本情報 (flex 4)
-                    pw.Expanded(
-                      flex: 4,
-                      child: pw.Container(
-                        padding: const pw.EdgeInsets.all(8),
-                        decoration: pw.BoxDecoration(
-                          color: PdfColors.grey50,
-                          border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                        ),
-                        child: pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            pw.Text('■ 患者基本情報', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
-                            pw.SizedBox(height: 4),
-                            pw.Row(
-                              children: [
-                                pw.Expanded(child: pw.Text('患者ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                                pw.Expanded(child: pw.Text('氏名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                                pw.Expanded(child: pw.Text('年齢: ${_pAgeCtrl.text.isEmpty ? "ー" : _pAgeCtrl.text} 歳', style: const pw.TextStyle(fontSize: 9))),
-                                pw.Expanded(child: pw.Text('性別: ${_pGender.isEmpty ? "ー" : _pGender}', style: const pw.TextStyle(fontSize: 9))),
-                              ],
-                            ),
-                            pw.SizedBox(height: 4),
-                            pw.Divider(thickness: 0.3, color: PdfColors.grey300),
-                            pw.SizedBox(height: 4),
-                            pw.Row(
-                              children: [
-                                pw.Expanded(child: pw.Text('身長: ${_pHeightCtrl.text.isEmpty ? "ー" : _pHeightCtrl.text} cm', style: const pw.TextStyle(fontSize: 9))),
-                                pw.Expanded(child: pw.Text('体重: ${_pWeightCtrl.text.isEmpty ? "ー" : _pWeightCtrl.text} kg', style: const pw.TextStyle(fontSize: 9))),
-                                pw.Expanded(child: pw.Text('BMI: $bmiString', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal900))),
-                                pw.Expanded(child: pw.SizedBox()),
-                              ],
-                            ),
-                          ],
-                        ),
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey50,
+                    border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                  ),
+                  child: pw.Column(
+                    children: [
+                      // ✨ 【1段目】患者情報
+                      pw.Row(
+                        children: [
+                          pw.Text('■ 患者情報：', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
+                          pw.SizedBox(width: 4),
+                          pw.Expanded(child: pw.Text('患者ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+                          pw.Expanded(child: pw.Text('氏名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+                          pw.Expanded(child: pw.Text('年齢: ${_pAgeCtrl.text.isEmpty ? "ー" : _pAgeCtrl.text} 歳', style: const pw.TextStyle(fontSize: 9))),
+                          pw.Expanded(child: pw.Text('性別: ${_pGender.isEmpty ? "ー" : _pGender}', style: const pw.TextStyle(fontSize: 9))),
+                          pw.Expanded(child: pw.Text('身長: ${_pHeightCtrl.text.isEmpty ? "ー" : _pHeightCtrl.text} cm', style: const pw.TextStyle(fontSize: 9))),
+                          pw.Expanded(child: pw.Text('体重: ${_pWeightCtrl.text.isEmpty ? "ー" : _pWeightCtrl.text} kg', style: const pw.TextStyle(fontSize: 9))),
+                          pw.Expanded(child: pw.Text('BMI: $bmiString', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal900))),
+                        ],
                       ),
-                    ),
-                    pw.SizedBox(width: 8),
+                      pw.SizedBox(height: 4),
+                      pw.Divider(thickness: 0.3, color: PdfColors.grey300),
+                      pw.SizedBox(height: 4),
 
-                    // 右側：診断・手術情報 (flex 3)
-                    pw.Expanded(
-                      flex: 3,
-                      child: pw.Container(
-                        padding: const pw.EdgeInsets.all(8),
-                        decoration: pw.BoxDecoration(
-                          color: PdfColors.grey50,
-                          border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                        ),
-                        child: pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            pw.Text('■ 診断・手術情報', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
-                            pw.SizedBox(height: 4),
-                            pw.Row(
-                              crossAxisAlignment:  pw.CrossAxisAlignment.start,
+                      // ✨ 【2段目】手術情報（自動縮小版）
+                      pw.Row(
+                        children: [
+                          pw.Text('■ 手術情報：', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
+                          pw.SizedBox(width: 4),
+                          pw.Expanded(
+                            flex: 3,
+                            child: pw.Row(
                               children: [
                                 pw.Text('術前診断: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                                pw.Expanded(child: pw.Text(_pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text, style: const pw.TextStyle(fontSize: 9))),
+                                pw.Expanded(
+                                  child: pw.FittedBox(
+                                    fit: pw.BoxFit.scaleDown, // 💡 枠を超えそうになると自動縮小する魔法の設定
+                                    alignment: pw.Alignment.centerLeft, // 左寄せを維持
+                                    child: pw.Text(
+                                      _pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text,
+                                      style: const pw.TextStyle(fontSize: 9),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
-                            pw.SizedBox(height: 4),
-                            pw.Divider(thickness: 0.3, color: PdfColors.grey300),
-                            pw.SizedBox(height: 4),
-                            pw.Row(
-                              crossAxisAlignment:  pw.CrossAxisAlignment.start,
+                          ),
+                          pw.SizedBox(width: 15),
+                          pw.Expanded(
+                            flex: 4,
+                            child: pw.Row(
                               children: [
                                 pw.Text('予定術式: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                                pw.Expanded(child: pw.Text(_pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text, style: const pw.TextStyle(fontSize: 9))),
+                                pw.Expanded(
+                                  child: pw.FittedBox(
+                                    fit: pw.BoxFit.scaleDown, // 💡 ここも同様に自動縮小
+                                    alignment: pw.Alignment.centerLeft,
+                                    child: pw.Text(
+                                      _pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text,
+                                      style: const pw.TextStyle(fontSize: 9),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                      pw.SizedBox(height: 4),
+                      pw.Divider(thickness: 0.3, color: PdfColors.grey300),
+                      pw.SizedBox(height: 4),
+
+                      // ✨ 【3段目】麻酔担当医・手術時間・麻酔時間
+                      pw.Row(
+                        children: [
+                          pw.Text('■ 管理情報：', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
+                          pw.SizedBox(width: 4),
+                          pw.Expanded(child: pw.Text('麻酔担当医: ${_anesthetistCtrl.text.isEmpty ? "未入力" : _anesthetistCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+
+                          // 💡 画面のロジックと同じ _calculateTotalMinutes メソッドをここで呼び出して直接埋め込みます
+                          pw.Expanded(
+                            child: pw.Text(
+                              '手術時間: ${_calculateTotalMinutes(_opStartTime, _opEndTime)}',
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ),
+                          pw.Expanded(
+                            child: pw.Text(
+                              '麻酔時間: ${_calculateTotalMinutes(_anesthesiaStartTime, _anesthesiaEndTime)}',
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ),
+
+                          pw.Expanded(child: pw.SizedBox()), // バランス調整用の空スペース
+                          pw.Expanded(child: pw.SizedBox()),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
 
                 // =========================================================================
-                // 【下部レイアウト予定地】
+                // 【下部レイアウト予定地】（全体の高さを最大限確保）
                 // =========================================================================
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 8),
                 pw.Expanded(
                   child: pw.Container(
                     width: double.infinity,
@@ -372,7 +385,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                   ),
                 ),
 
-                pw.SizedBox(height: 5),
+                pw.SizedBox(height: 4),
                 pw.Divider(thickness: 0.5, color: PdfColors.grey400),
                 pw.Align(
                   alignment: pw.Alignment.centerRight,
@@ -392,9 +405,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
         ..click();
       html.Url.revokeObjectUrl(url);
 
-      print('--- 【ログ】横向きPDF処理が正常終了しました ---');
+      print('--- 【ログ】横向き3段PDF処理が正常終了しました ---');
     } catch (e) {
-      print('--- 【ログ】横向きPDF生成エラー: $e ---');
+      print('--- 【ログ】横向き3段PDF生成エラー: $e ---');
     }
   }
 
