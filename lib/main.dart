@@ -587,7 +587,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             children: List.generate((maxMinutes / interval).toInt() + 1, (index) {
                                               // 💡 ここに、各時間帯に対応するスタンプや投与量を表示するロジックを入れられます
                                               String cellText = '';
-                                              if (title == 'イベント' && index == 2) cellText = '🐾'; // アプリのアイコン風ダミー
+                                              //if (title == 'イベント' && index == 2) cellText = '🐾'; // アプリのアイコン風ダミー
 
                                               return pw.Expanded(
                                                 child: pw.Container(
