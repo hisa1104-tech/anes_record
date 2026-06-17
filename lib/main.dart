@@ -228,33 +228,15 @@ class _MainRecordPageState extends State<MainRecordPage> {
   DateTime? _opEndTime;
 
   final GlobalKey _chartCaptureKey = GlobalKey();
-  // 📸 1. 画面の指定範囲（RepaintBoundary）を画像データに変換する関数
-  Future<Uint8List?> _captureChartImage() async {
-    try {
-      // 鍵から現在の状態（RenderRepaintBoundary）を取得
-      RenderRepaintBoundary? boundary = _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) return null;
-
-      // 高解像度（pixelRatio: 3.0）で画像（ui.Image）に変換
-      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-
-      // Flutterで扱えるバイトデータ（PNG形式）に変換
-      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      return byteData?.buffer.asUint8List();
-    } catch (e) {
-      print("画像キャプチャに失敗しました: $e");
-      return null;
-    }
-  }
 
   Future<void> _generatePdf() async {
     try {
       print('--- 【ログ】A4横向き・3段コンパクトPDF生成スタート ---');
 
-      // 💡 1. 描画の確定を少し待ってから、画面から「グラフ＋タイムライン＋ログ」をパシャッと撮影
       await Future.delayed(const Duration(milliseconds: 200));
-      final Uint8List? capturedImageBytes = await _captureChartImage();
 
+      //final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
+      //final fontBold = await PdfGoogleFonts.notoSansJPBold();
       final pw.Font fontRegular = await PdfGoogleFonts.notoSansJPRegular();
       final pw.Font fontBold = await PdfGoogleFonts.notoSansJPBold();
       final pdf = pw.Document();
@@ -263,14 +245,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4.landscape,
-          margin: const pw.EdgeInsets.all(25),
+          margin: const pw.EdgeInsets.all(25), // 下部エリアを広げるためマージンを少しタイトに調整
           theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           build: (pw.Context context) {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 // =========================================================================
-                // タイトルヘッダー（★しっかり残しています）
+                // タイトルヘッダー
                 // =========================================================================
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -284,7 +266,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 pw.SizedBox(height: 6),
 
                 // =========================================================================
-                // 【上部レイアウト】3段構成のコンパクト情報エリア（★しっかり残しています）
+                // 【上部レイアウト】3段構成のコンパクト情報エリア
                 // =========================================================================
                 pw.Container(
                   padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -325,8 +307,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                 pw.Text('術前診断: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 pw.Expanded(
                                   child: pw.FittedBox(
-                                    fit: pw.BoxFit.scaleDown,
-                                    alignment: pw.Alignment.centerLeft,
+                                    fit: pw.BoxFit.scaleDown, // 💡 枠を超えそうになると自動縮小する魔法の設定
+                                    alignment: pw.Alignment.centerLeft, // 左寄せを維持
                                     child: pw.Text(
                                       _pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text,
                                       style: const pw.TextStyle(fontSize: 9),
@@ -344,7 +326,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                 pw.Text('予定術式: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 pw.Expanded(
                                   child: pw.FittedBox(
-                                    fit: pw.BoxFit.scaleDown,
+                                    fit: pw.BoxFit.scaleDown, // 💡 ここも同様に自動縮小
                                     alignment: pw.Alignment.centerLeft,
                                     child: pw.Text(
                                       _pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text,
@@ -367,6 +349,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           pw.Text('■ 管理情報：', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
                           pw.SizedBox(width: 4),
                           pw.Expanded(child: pw.Text('麻酔担当医: ${_anesthetistCtrl.text.isEmpty ? "未入力" : _anesthetistCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+
+                          // 💡 画面のロジックと同じ _calculateTotalMinutes メソッドをここで呼び出して直接埋め込みます
                           pw.Expanded(
                             child: pw.Text(
                               '手術時間: ${_calculateTotalMinutes(_opStartTime, _opEndTime)}',
@@ -379,7 +363,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               style: const pw.TextStyle(fontSize: 9),
                             ),
                           ),
-                          pw.Expanded(child: pw.SizedBox()),
+
+                          pw.Expanded(child: pw.SizedBox()), // バランス調整用の空スペース
                           pw.Expanded(child: pw.SizedBox()),
                         ],
                       ),
@@ -388,23 +373,160 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 ),
 
                 // =========================================================================
-                // 【下部レイアウト】差し替えエリア
-                // 💡 複雑な手書きロジックを廃止し、画面から直接撮影した「本物のデータ画像」を綺麗にハメ込みます！
+                // 【下部レイアウト】左側：バイタルグラフ＆タイムライン / 右側：過去ログ（予定）
                 // =========================================================================
                 pw.SizedBox(height: 10),
                 pw.Expanded(
-                  child: capturedImageBytes == null
-                      ? pw.Center(child: pw.Text('データの取得に失敗しました', style: pw.TextStyle(font: fontRegular, fontSize: 11)))
-                      : pw.Container(
-                    width: double.infinity,
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                    ),
-                    child: pw.Image(
-                      pw.MemoryImage(capturedImageBytes),
-                      fit: pw.BoxFit.contain, // 縦横比を維持して、印刷可能エリアにジャストフィットさせる
-                    ),
+                  child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                    children: [
+                      // --------- 左側 2/3：バイタルグラフ ＆ タイムラインエリア ---------
+                      pw.Expanded(
+                        flex: 2,
+                        child: pw.Container(
+                          padding: const pw.EdgeInsets.all(6),
+                          decoration: pw.BoxDecoration(
+                            border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                          ),
+                          child: _records.isEmpty
+                              ? pw.Center(
+                            child: pw.Text('バイタルデータがありません', style: pw.TextStyle(font: fontRegular, fontSize: 10, color: PdfColors.grey500)),
+                          )
+                              : pw.CustomPaint(
+                            size: const PdfPoint(0, 0),
+                            painter: (PdfGraphics canvas, PdfPoint size) {
+                              // 💡 【リセットの要】この内部では font 変数を一切使用しません。
+                              // 文字描画エラーの可能性を根本からゼロにしています。
+
+                              // アプリと共通の数理計算ロジック
+                              double computedMaxY = 200;
+                              double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
+
+                              if (_startTime != null) {
+                                for (var r in _records) {
+                                  double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
+                                  // 💡 アプリの最大値拡張ロジックをここに反映
+                                  if (r.sbp > computedMaxY) computedMaxY = r.sbp + 20;
+                                  if (m > maxMinutes) maxMinutes = m + 5;
+                                }
+                              }
+
+                              double interval = 5.0;
+                              if (maxMinutes >= 180) { interval = 30.0; }
+                              else if (maxMinutes >= 120) { interval = 20.0; }
+                              else if (maxMinutes >= 60) { interval = 10.0; }
+
+                              // 描画エリアのマージン（文字を置かないため、左と下の余白を最小化）
+                              final double paddingLeft = 10.0;
+                              final double paddingBottom = 10.0;
+                              final double graphWidth = size.x - paddingLeft;
+                              final double graphHeight = size.y - paddingBottom;
+
+                              // グラフの外枠と背景グリッドの描画
+                              canvas.setStrokeColor(PdfColors.grey300);
+                              canvas.setLineWidth(0.5);
+
+                              // Y軸グリッド（20刻み）
+                              for (double yVal = 0; yVal <= computedMaxY; yVal += 20) {
+                                double yPos = paddingBottom + (yVal / computedMaxY) * graphHeight;
+                                canvas.moveTo(paddingLeft, yPos);
+                                canvas.lineTo(size.x, yPos);
+                                canvas.strokePath();
+                              }
+
+                              // X軸グリッド
+                              for (double mVal = 0; mVal <= maxMinutes; mVal += interval) {
+                                double xPos = paddingLeft + (mVal / maxMinutes) * graphWidth;
+                                canvas.moveTo(xPos, paddingBottom);
+                                canvas.lineTo(xPos, size.y);
+                                canvas.strokePath();
+                              }
+
+                              // バイタルデータ（線と図形記号）のプロット
+                              PdfPoint? lastHrPoint;
+                              PdfPoint? lastSpo2Point;
+
+                              for (var r in _records) {
+                                if (_startTime == null) continue;
+                                double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
+
+                                // 座標変換
+                                double x = paddingLeft + (m / maxMinutes) * graphWidth;
+                                double ySbp = paddingBottom + (r.sbp / computedMaxY) * graphHeight;
+                                double yDbp = paddingBottom + (r.dbp / computedMaxY) * graphHeight;
+                                double yHr = paddingBottom + (r.hr / computedMaxY) * graphHeight;
+                                double ySpo2 = paddingBottom + (r.spo2 / computedMaxY) * graphHeight;
+
+                                // 1. HR（脈拍）の線を繋ぐ
+                                if (lastHrPoint != null) {
+                                  canvas.setStrokeColor(PdfColors.green600);
+                                  canvas.setLineWidth(1.0);
+                                  canvas.moveTo(lastHrPoint.x, lastHrPoint.y);
+                                  canvas.lineTo(x, yHr);
+                                  canvas.strokePath();
+                                }
+                                lastHrPoint = PdfPoint(x, yHr);
+
+                                // 2. SpO2 の線を繋ぐ
+                                if (lastSpo2Point != null) {
+                                  canvas.setStrokeColor(PdfColors.cyan600);
+                                  canvas.setLineWidth(1.0);
+                                  canvas.moveTo(lastSpo2Point.x, lastSpo2Point.y);
+                                  canvas.lineTo(x, ySpo2);
+                                  canvas.strokePath();
+                                }
+                                lastSpo2Point = PdfPoint(x, ySpo2);
+
+                                // 3. 各種記号を線（パス）で直接描画
+                                final double hSize = 3.0; // 記号の半分の幅/高さ
+
+                                // sBP: 「 V 」の形をパスで描画（赤色）
+                                canvas.setStrokeColor(PdfColors.red600);
+                                canvas.setLineWidth(1.0);
+                                canvas.moveTo(x - hSize, ySbp + hSize); // 左上
+                                canvas.lineTo(x, ySbp - hSize);         // 下中央（頂点）
+                                canvas.lineTo(x + hSize, ySbp + hSize); // 右上
+                                canvas.strokePath();
+
+                                // dBP: 「 逆V 」の形をパスで描画（赤色）
+                                canvas.setStrokeColor(PdfColors.red600);
+                                canvas.setLineWidth(1.0);
+                                canvas.moveTo(x - hSize, yDbp - hSize); // 左下
+                                canvas.lineTo(x, yDbp + hSize);         // 上中央（頂点）
+                                canvas.lineTo(x + hSize, yDbp - hSize); // 右下
+                                canvas.strokePath();
+
+                                // HR: 「 ■ 」（四角形）を塗りつぶし描画（緑色）
+                                canvas.setFillColor(PdfColors.green600);
+                                canvas.drawRect(x - 2, yHr - 2, 4, 4);
+                                canvas.fillPath();
+
+                                // SpO2: 「 ● 」（円形）を塗りつぶし描画（シアン色）
+                                canvas.setFillColor(PdfColors.cyan600);
+                                canvas.drawEllipse(x, ySpo2, 2.5, 2.5);
+                                canvas.fillPath();
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+
+                      pw.SizedBox(width: 8),
+
+                      // --------- 右側 1/3：過去ログ・イベント予定地 ---------
+                      pw.Expanded(
+                        flex: 1,
+                        child: pw.Container(
+                          decoration: pw.BoxDecoration(
+                            border: pw.Border.all(color: PdfColors.grey300, style: pw.BorderStyle.dashed, width: 0.5),
+                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                          ),
+                          alignment: pw.Alignment.center,
+                          child: pw.Text('※ ここに【過去ログ】が入ります', style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.grey500)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -1133,357 +1255,147 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 Expanded(
                   child: Row(
                     children: [
-                      // 💡 1. リアルタイムにサイズ計算が変わる右側コントロールパネル（COLUMN 3）と、
-                      // 撮影対象エリア（COLUMN 1 & 2）を分けるため、ここに大きな Row を配置します。
+                      // COLUMN 1: タイムライン＆トレンド
                       Expanded(
-                        flex: 7, // COLUMN 1 (flex 5) + COLUMN 2 (flex 2) = 計 7
+                        flex: 5,
+                        child: Padding(
+                          padding: const EdgeInsets.all(6.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 💡 1. リアルタイムにサイズ計算が変わるトグルボタンは、撮影範囲（RepaintBoundary）の外に出します
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('【 バイタルサイン・トレンド 】', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  ToggleButtons(
+                                    borderRadius: BorderRadius.circular(4),
+                                    isSelected: [
+                                      _selectedTimelineMinutes == 10,
+                                      _selectedTimelineMinutes == 30,
+                                      _selectedTimelineMinutes == 60,
+                                      _selectedTimelineMinutes == 120,
+                                      _selectedTimelineMinutes == 180
+                                    ],
+                                    onPressed: (idx) => setState(() => _selectedTimelineMinutes =
+                                    idx == 0 ? 10 :
+                                    idx == 1 ? 30 :
+                                    idx == 2 ? 60 :
+                                    idx == 3 ? 120 : 180
+                                    ),
+                                    constraints: const BoxConstraints(minHeight: 22, minWidth: 42),
+                                    children: const [
+                                      Text('10分', style: TextStyle(fontSize: 10.5)),
+                                      Text('30分', style: TextStyle(fontSize: 10.5)),
+                                      Text('1h', style: TextStyle(fontSize: 10.5)),
+                                      Text('2h', style: TextStyle(fontSize: 10.5)),
+                                      Text('3h', style: TextStyle(fontSize: 10.5))
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
 
-                        // 💡 2. ここに RepaintBoundary を配置！これでCOLUMN 1とCOLUMN 2がすべて綺麗に包まれます。
-                        child: RepaintBoundary(
-                          key: _chartCaptureKey, // 👈 グラフ、タイムライン、ログ一覧のすべてを写すカメラの鍵
-                          child: Container(
-                            color: Colors.white, // 💡 PDF化した際に背景が透明になるのを防ぐため、白で固定します
-                            child: Row(
-                              children: [
-                                // ---------------------------------------------------------------------
-                                // COLUMN 1: タイムライン＆トレンド (撮影範囲内)
-                                // ---------------------------------------------------------------------
-                                Expanded(
-                                  flex: 5,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(6.0),
+                              // 💡 2. ここに RepaintBoundary を移動します。
+                              // サイズの確定したグラフとタイムラインだけを綺麗に包むため、iPadでも確実に画像化（PDF化）されます。
+                              Expanded(
+                                child: RepaintBoundary(
+                                  key: _chartCaptureKey, // 👈 カメラの鍵をここにお引っ越し
+                                  child: Container(
+                                    color: Colors.white, // 💡 背景色を白で固定しておくとPDFがより綺麗になります
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // 💡 3. トグルボタンも撮影に含める場合はこのまま内部に、
-                                        // もし「トグルボタンはPDFに入れたくない」場合は外に出す必要がありますが、
-                                        // レイアウトの一体性を維持するため、このRowの中に綺麗に収めています。
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            const Text('【 バイタルサイン・トレンド 】', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black)),
-                                            ToggleButtons(
-                                              borderRadius: BorderRadius.circular(4),
-                                              isSelected: [
-                                                _selectedTimelineMinutes == 10,
-                                                _selectedTimelineMinutes == 30,
-                                                _selectedTimelineMinutes == 60,
-                                                _selectedTimelineMinutes == 120,
-                                                _selectedTimelineMinutes == 180
-                                              ],
-                                              onPressed: (idx) => setState(() => _selectedTimelineMinutes =
-                                              idx == 0 ? 10 :
-                                              idx == 1 ? 30 :
-                                              idx == 2 ? 60 :
-                                              idx == 3 ? 120 : 180
-                                              ),
-                                              constraints: const BoxConstraints(minHeight: 22, minWidth: 42),
-                                              children: const [
-                                                Text('10分', style: TextStyle(fontSize: 10.5)),
-                                                Text('30分', style: TextStyle(fontSize: 10.5)),
-                                                Text('1h', style: TextStyle(fontSize: 10.5)),
-                                                Text('2h', style: TextStyle(fontSize: 10.5)),
-                                                Text('3h', style: TextStyle(fontSize: 10.5))
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 2),
-
+                                        // 📈 グラフエリア
                                         Expanded(
-                                          child: Column(
+                                          flex: 3,
+                                          child: Row(
                                             children: [
-                                              // 📈 グラフエリア
-                                              Expanded(
-                                                flex: 3,
-                                                child: Row(
+                                              Container(
+                                                width: 90,
+                                                padding: const EdgeInsets.only(left: 6, top: 10),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  mainAxisAlignment: MainAxisAlignment.start,
                                                   children: [
-                                                    Container(
-                                                      width: 90,
-                                                      padding: const EdgeInsets.only(left: 6, top: 10),
-                                                      child: Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        mainAxisAlignment: MainAxisAlignment.start,
-                                                        children: [
-                                                          _verticalLegendItem('sBP', Colors.red, '   ∨'),
-                                                          _verticalLegendItem('dBP', Colors.red, '   ∧'),
-                                                          _verticalLegendItem('HR', Colors.green, '   ■'),
-                                                          _verticalLegendItem('SpO2', Colors.cyan, '   ●'),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      child: Container(
-                                                          padding: const EdgeInsets.only(right: 15, top: 4),
-                                                          child: LineChart(_mainChartData())
-                                                      ),
-                                                    ),
+                                                    _verticalLegendItem('sBP', Colors.red, '   ∨'),
+                                                    _verticalLegendItem('dBP', Colors.red, '   ∧'),
+                                                    _verticalLegendItem('HR', Colors.green, '   ■'),
+                                                    _verticalLegendItem('SpO2', Colors.cyan, '   ●'),
+                                                    // if (_records.isNotEmpty) ...[
+                                                    //   const SizedBox(height: 14),
+                                                    //   const Divider(height: 1, color: Colors.black12),
+                                                    //   const SizedBox(height: 10),
+                                                    //   Text(
+                                                    //     '最新値: ${DateFormat('HH:mm').format(_records.last.dateTime)}',
+                                                    //     style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                                                    //   ),
+                                                    //   const SizedBox(height: 4),
+                                                    //   ElevatedButton(
+                                                    //     onPressed: () => _showVitalEditDialog(_records.last),
+                                                    //     style: ElevatedButton.styleFrom(
+                                                    //       backgroundColor: Colors.blueGrey.shade700,
+                                                    //       foregroundColor: Colors.white,
+                                                    //       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+                                                    //       minimumSize: const Size(78, 26),
+                                                    //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                                    //       elevation: 1,
+                                                    //     ),
+                                                    //     child: const Text('最新を修正', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                                                    //   ),
+                                                    // ],
                                                   ],
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
-
-                                              // ⏱️ タイムラインエリア
                                               Expanded(
-                                                flex: 4,
-                                                child: ListView(
-                                                  shrinkWrap: true,
-                                                  physics: const ClampingScrollPhysics(),
-                                                  children: [
-                                                    _buildTimelineRow(label: 'イベント', maxMinutes: maxX, children: _getEventPins(maxX, chartW)),
-                                                    _buildTimelineRow(label: '処置メモ/PV', maxMinutes: maxX, children: _getCombinedIvAndRemarkPins(maxX, chartW)),
-                                                    _buildTimelineRow(label: 'O2 [L/min]', maxMinutes: maxX, children: _getInfusionGraphics('O2', maxX, chartW, Colors.blue), bgColor: Colors.blue.withOpacity(0.01)),
-                                                    if (_showN2oRow)
-                                                      _buildTimelineRow(label: 'N2O [L/min]', maxMinutes: maxX, children: _getInfusionGraphics('N2O', maxX, chartW, Colors.lightBlue.shade300), bgColor: Colors.lightBlue.withOpacity(0.01)),
-                                                    _buildTimelineRow(label: 'Propofol civ [$_propofolInfUnit]', maxMinutes: maxX, children: _getInfusionGraphics('PropofolInf', maxX, chartW, Colors.purple), bgColor: Colors.purple.withOpacity(0.01)),
-                                                    _buildTimelineRow(label: 'Propofol iv [mg]', maxMinutes: maxX, children: _getBolusPins('Propofol', maxX, chartW, Colors.deepPurple.shade400), bgColor: Colors.purple.withOpacity(0.01)),
-                                                    _buildTimelineRow(label: 'Midazolam iv [mg]', maxMinutes: maxX, children: _getBolusPins('Midazolam', maxX, chartW, Colors.teal), bgColor: Colors.teal.withOpacity(0.01)),
-                                                    if (_showAcerioRow)
-                                                      _buildTimelineRow(label: 'アセリオ [mg]', maxMinutes: maxX, children: _getBolusPins('アセリオ', maxX, chartW, Colors.orange.shade700), bgColor: Colors.orange.withOpacity(0.01)),
-                                                    if (_showRopionRow)
-                                                      _buildTimelineRow(label: 'ロピオン [mg]', maxMinutes: maxX, children: _getBolusPins('ロピオン', maxX, chartW, Colors.brown), bgColor: Colors.brown.withOpacity(0.01)),
-                                                    _buildTimelineRow(label: '$_selectedLaDrug [mL]', maxMinutes: maxX, children: _getBolusPins('LA', maxX, chartW, Colors.indigo.shade800), bgColor: Colors.indigo.withOpacity(0.01)),
-                                                    ...customDrugNames.where((name) => name != _selectedFluidType).map((drugName) {
-                                                      String customUnit = 'mg';
-                                                      if (drugName == _customDrugNameController.text.trim()) {
-                                                        customUnit = _selectedCustomUnit;
-                                                      } else {
-                                                        try { customUnit = _bolusLogs.firstWhere((b) => b.drugName == drugName).unit; } catch (_) {}
-                                                      }
-                                                      return _buildTimelineRow(
-                                                          label: '$drugName [$customUnit]', maxMinutes: maxX,
-                                                          children: _getDynamicCustomBolusPins(drugName, maxX, chartW, Colors.grey.shade800),
-                                                          bgColor: Colors.grey.shade100
-                                                      );
-                                                    }),
-                                                    _buildTimelineRow(
-                                                        label: '$_selectedFluidType [mL]',
-                                                        maxMinutes: maxX,
-                                                        children: _getBolusPins(_selectedFluidType, maxX, chartW, Colors.teal.shade700),
-                                                        bgColor: Colors.teal.withOpacity(0.02)
-                                                    ),
-                                                  ],
+                                                child: Container(
+                                                    padding: const EdgeInsets.only(right: 15, top: 4),
+                                                    child: LineChart(_mainChartData())
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                                        const SizedBox(height: 4),
 
-                                // ---------------------------------------------------------------------
-                                // COLUMN 2: 記録ログ一覧 (★ご指定通り、グループAまでを撮影範囲に限定)
-                                // ---------------------------------------------------------------------
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    color: Colors.grey.shade50,
-                                    padding: const EdgeInsets.all(6.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('【 記録一覧ログ 】', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                        const Divider(height: 8),
+                                        // ⏱️ タイムラインエリア
                                         Expanded(
+                                          flex: 4,
                                           child: ListView(
+                                            // 💡 iPadでの描画エラーを防ぐため、撮影対象内のListViewには以下の2行を添えるのがFlutterの鉄則です
+                                            shrinkWrap: true,
+                                            physics: const ClampingScrollPhysics(),
                                             children: [
-                                              // 💡 ここからグループAの終わりまでを RepaintBoundary で包みます！
-                                              RepaintBoundary(
-                                                key: _chartCaptureKey, // 👈 カメラの鍵をここにお引越し
-                                                child: Container(
-                                                  color: Colors.grey.shade50, // 撮影時の背景白化・透過防止
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      // ================= 👑 グループA：イベント・ルート確保・処置メモ =================
-                                                      const Text('【 イベント・処置・メモ 】', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                                                      const SizedBox(height: 4),
-                                                      ..._events.where((e) => e.time != null).map((e) => Padding(
-                                                        padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
-                                                        child: InkWell(
-                                                          onTap: () => _showEventTimeEditDialog(e),
-                                                          child: Padding(
-                                                            padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
-                                                            child: Text(
-                                                              '[${DateFormat('HH:mm').format(e.time!)}]  (${e.symbol}) ${e.name}',
-                                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 0.2),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )),
-                                                      ..._ivRecords.map((iv) => Padding(
-                                                        padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
-                                                        child: InkWell(
-                                                          onTap: () => _showEditDeleteDialog(
-                                                            title: 'ルート確保の修正', initialTime: iv.time,
-                                                            onDelete: () => setState(() => _ivRecords.removeWhere((i) => i.id == iv.id)),
-                                                            onUpdate: (nt, _) => setState(() { int idx = _ivRecords.indexWhere((i) => i.id == iv.id); if (idx != -1) _ivRecords[idx] = IvRecord(id: iv.id, time: nt, gauge: iv.gauge, site: iv.site, isSuccess: iv.isSuccess); }),
-                                                          ),
-                                                          child: Padding(
-                                                            padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
-                                                            child: Text(
-                                                              '[${DateFormat('HH:mm').format(iv.time)}]  PV ${iv.gauge}/${iv.site} -> ${iv.isSuccess ? "成功" : "失敗"}',
-                                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green, letterSpacing: 0.2),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )),
-                                                      ..._remarkLogs.map((rm) => Padding(
-                                                        padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
-                                                        child: InkWell(
-                                                          onTap: () => _showEditDeleteDialog(
-                                                            title: '処置メモ No.${rm.number} の修正', initialTime: rm.time, initialAmount: rm.text, amountLabel: 'メモ内容',
-                                                            onDelete: () => setState(() { _remarkLogs.removeWhere((r) => r.id == rm.id); for (int i=0; i<_remarkLogs.length; i++) { _remarkLogs[i].number = i + 1; } }),
-                                                            onUpdate: (nt, na) => setState(() { int idx = _remarkLogs.indexWhere((r) => r.id == rm.id); if (idx != -1) { _remarkLogs[idx] = RemarkLog(id: rm.id, time: nt, text: na ?? rm.text, number: rm.number); } }),
-                                                          ),
-                                                          child: Padding(
-                                                            padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
-                                                            child: Text(
-                                                              '[${DateFormat('HH:mm').format(rm.time)}]  No.${rm.number}: ${rm.text}',
-                                                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade800, letterSpacing: 0.2),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ), // 💡 ここでカメラ（RepaintBoundary）のシャッター範囲が終了！
-
-                                              const Divider(height: 16, thickness: 1),
-
-                                              // ================= 💉 グループB：麻酔・呼吸・薬剤投与（★ここからは撮影されません） =================
-                                              const Text('【 麻酔・呼吸・薬剤設定 】', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                                              const SizedBox(height: 4),
-
-                                              ..._infusionMap.entries.expand((entry) => entry.value.map((pt) {
-                                                String unit = '';
-                                                String displayName = entry.key;
-
-                                                if (entry.key == "PropofolInf") {
-                                                  displayName = "Propofol civ";
-                                                  unit = _propofolInfUnit;
-                                                } else if (entry.key == "O2" || entry.key == "N2O") {
-                                                  unit = "L/min";
+                                              _buildTimelineRow(label: 'イベント', maxMinutes: maxX, children: _getEventPins(maxX, chartW)),
+                                              _buildTimelineRow(label: '処置メモ/PV', maxMinutes: maxX, children: _getCombinedIvAndRemarkPins(maxX, chartW)),
+                                              _buildTimelineRow(label: 'O2 [L/min]', maxMinutes: maxX, children: _getInfusionGraphics('O2', maxX, chartW, Colors.blue), bgColor: Colors.blue.withOpacity(0.01)),
+                                              if (_showN2oRow)
+                                                _buildTimelineRow(label: 'N2O [L/min]', maxMinutes: maxX, children: _getInfusionGraphics('N2O', maxX, chartW, Colors.lightBlue.shade300), bgColor: Colors.lightBlue.withOpacity(0.01)),
+                                              _buildTimelineRow(label: 'Propofol civ [$_propofolInfUnit]', maxMinutes: maxX, children: _getInfusionGraphics('PropofolInf', maxX, chartW, Colors.purple), bgColor: Colors.purple.withOpacity(0.01)),
+                                              _buildTimelineRow(label: 'Propofol iv [mg]', maxMinutes: maxX, children: _getBolusPins('Propofol', maxX, chartW, Colors.deepPurple.shade400), bgColor: Colors.purple.withOpacity(0.01)),
+                                              _buildTimelineRow(label: 'Midazolam iv [mg]', maxMinutes: maxX, children: _getBolusPins('Midazolam', maxX, chartW, Colors.teal), bgColor: Colors.teal.withOpacity(0.01)),
+                                              if (_showAcerioRow)
+                                                _buildTimelineRow(label: 'アセリオ [mg]', maxMinutes: maxX, children: _getBolusPins('アセリオ', maxX, chartW, Colors.orange.shade700), bgColor: Colors.orange.withOpacity(0.01)),
+                                              if (_showRopionRow)
+                                                _buildTimelineRow(label: 'ロピオン [mg]', maxMinutes: maxX, children: _getBolusPins('ロピオン', maxX, chartW, Colors.brown), bgColor: Colors.brown.withOpacity(0.01)),
+                                              _buildTimelineRow(label: '$_selectedLaDrug [mL]', maxMinutes: maxX, children: _getBolusPins('LA', maxX, chartW, Colors.indigo.shade800), bgColor: Colors.indigo.withOpacity(0.01)),
+                                              ...customDrugNames.where((name) => name != _selectedFluidType).map((drugName) {
+                                                String customUnit = 'mg';
+                                                if (drugName == _customDrugNameController.text.trim()) {
+                                                  customUnit = _selectedCustomUnit;
+                                                } else {
+                                                  try { customUnit = _bolusLogs.firstWhere((b) => b.drugName == drugName).unit; } catch (_) {}
                                                 }
-
-                                                String logText = pt.isStop
-                                                    ? '[${DateFormat('HH:mm').format(pt.time)}]  $displayName: OFF'
-                                                    : '[${DateFormat('HH:mm').format(pt.time)}]  $displayName: ${pt.val} $unit';
-
-                                                return Padding(
-                                                  padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
-                                                  child: InkWell(
-                                                    onTap: () => _showEditDeleteDialog(
-                                                      title: '$displayName の修正', initialTime: pt.time, initialAmount: pt.isStop ? null : pt.val, amountLabel: '設定値',
-                                                      onDelete: () => setState(() => _infusionMap[entry.key]!.removeWhere((p) => p.id == pt.id)),
-                                                      onUpdate: (nt, na) => setState(() { int idx = _infusionMap[entry.key]!.indexWhere((p) => p.id == pt.id); if (idx != -1) { _infusionMap[entry.key]![idx].time = nt; if (na != null) _infusionMap[entry.key]![idx] = InfusionPoint(id: pt.id, time: nt, val: na, isStop: pt.isStop); _infusionMap[entry.key]!.sort((a, b) => a.time.compareTo(b.time)); } }),
-                                                    ),
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
-                                                      child: Text(
-                                                        logText,
-                                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: pt.isStop ? Colors.red.shade700 : Colors.indigo, letterSpacing: 0.2),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                );
-                                              })),
-
-                                              ..._bolusLogs.map((b) {
-                                                String displayName = b.drugName;
-                                                String displayAmount = b.amount;
-                                                String unit = b.unit;
-
-                                                if (b.drugName == 'LA') {
-                                                  displayName = _selectedLaDrug;
-                                                  unit = 'mL';
-                                                  if (b.amount.contains(' ')) {
-                                                    displayAmount = b.amount.split(' ').last;
-                                                  }
-                                                }
-                                                else if (b.drugName == _customDrugNameController.text.trim()) {
-                                                  unit = _selectedCustomUnit;
-                                                }
-                                                return Padding(
-                                                  padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      _showEditDeleteDialog(
-                                                          title: '$displayName の修正', initialTime: b.time, initialAmount: displayAmount, amountLabel: '投与量',
-                                                          onDelete: () => setState(() => _bolusLogs.removeWhere((bl) => bl.id == b.id)),
-                                                          onUpdate: (nt, na) => setState(() {
-                                                            int idx = _bolusLogs.indexWhere((bl) => bl.id == b.id);
-                                                            if (idx != -1) {
-                                                              String finalAmount = na ?? displayAmount;
-                                                              if (b.drugName == 'LA') {
-                                                                String prefix = b.amount.split(' ').first;
-                                                                finalAmount = '$prefix $finalAmount';
-                                                              }
-                                                              _bolusLogs[idx].time = nt;
-                                                              _bolusLogs[idx].amount = finalAmount;
-                                                            }
-                                                          })
-                                                      );
-                                                    },
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
-                                                      child: Text(
-                                                        '[${DateFormat('HH:mm').format(b.time)}]  $displayName: $displayAmount $unit',
-                                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.deepPurple, letterSpacing: 0.2),
-                                                      ),
-                                                    ),
-                                                  ),
+                                                return _buildTimelineRow(
+                                                    label: '$drugName [$customUnit]', maxMinutes: maxX,
+                                                    children: _getDynamicCustomBolusPins(drugName, maxX, chartW, Colors.grey.shade800),
+                                                    bgColor: Colors.grey.shade100
                                                 );
                                               }),
-
-                                              const Divider(height: 16, thickness: 1),
-
-                                              // ================= 📊 グループC：バイタルサイン履歴 =================
-                                              const Text('【 バイタルサイン履歴 】', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                                              const SizedBox(height: 4),
-                                              ..._records.map((r) => Padding(
-                                                padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
-                                                child: InkWell(
-                                                  onTap: () => _showVitalEditDialog(r),
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
-                                                    child: Text(
-                                                      '[${DateFormat('HH:mm').format(r.dateTime)}]  ${r.sbp.toInt()}/${r.dbp.toInt()}  (HR:${r.hr.toInt()})  SpO2:${r.spo2.toInt()}%',
-                                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red, letterSpacing: 0.2),
-                                                    ),
-                                                  ),
-                                                ),
-                                              )),
-                                              const Divider(height: 16, thickness: 1),
-
-                                              // ================= 📋 グループD：保険算定用サマリー =================
-                                              const Text('【 保険算定用データ 】', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.teal)),
-                                              const SizedBox(height: 4),
-                                              Builder(
-                                                  builder: (context) {
-                                                    final o2Stats = _calculateO2Stats();
-                                                    return Container(
-                                                      width: double.infinity,
-                                                      padding: const EdgeInsets.all(6.0),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.teal.shade50,
-                                                        borderRadius: BorderRadius.circular(4),
-                                                        border: Border.all(color: Colors.teal.shade100),
-                                                      ),
-                                                      child: Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          Text('酸素投与総時間 : ${o2Stats['time']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal)),
-                                                          const SizedBox(height: 2),
-                                                          Text('酸素総投与量   : ${o2Stats['amount']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal)),
-                                                        ],
-                                                      ),
-                                                    );
-                                                  }
+                                              _buildTimelineRow(
+                                                  label: '$_selectedFluidType [mL]',
+                                                  maxMinutes: maxX,
+                                                  children: _getBolusPins(_selectedFluidType, maxX, chartW, Colors.teal.shade700),
+                                                  bgColor: Colors.teal.withOpacity(0.02)
                                               ),
                                             ],
                                           ),
@@ -1492,15 +1404,224 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      ), // ここで RepaintBoundary とその中の Container, Row などを綺麗に閉じます
+                      ),
 
-                      // ---------------------------------------------------------------------
-                      // COLUMN 3: 右側コントロールパネル (★ここは撮影範囲の外側です)
-                      // ---------------------------------------------------------------------
+                      // COLUMN 2: 記録ログ一覧
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          color: Colors.grey.shade50,
+                          padding: const EdgeInsets.all(6.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('【 記録一覧ログ 】', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              const Divider(height: 8),
+                              Expanded(
+                                child: ListView(
+                                  children: [
+                                    // ================= 👑 グループA：イベント・ルート確保・処置メモ =================
+                                    const Text('【 イベント・処置・メモ 】', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                                    const SizedBox(height: 4),
+                                    ..._events.where((e) => e.time != null).map((e) => Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
+                                      child: InkWell(
+                                        onTap: () => _showEventTimeEditDialog(e),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
+                                          child: Text(
+                                            '[${DateFormat('HH:mm').format(e.time!)}]  (${e.symbol}) ${e.name}',
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 0.2),
+                                          ),
+                                        ),
+                                      ),
+                                    )),
+                                    ..._ivRecords.map((iv) => Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
+                                      child: InkWell(
+                                        onTap: () => _showEditDeleteDialog(
+                                          title: 'ルート確保の修正', initialTime: iv.time,
+                                          onDelete: () => setState(() => _ivRecords.removeWhere((i) => i.id == iv.id)),
+                                          onUpdate: (nt, _) => setState(() { int idx = _ivRecords.indexWhere((i) => i.id == iv.id); if (idx != -1) _ivRecords[idx] = IvRecord(id: iv.id, time: nt, gauge: iv.gauge, site: iv.site, isSuccess: iv.isSuccess); }),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
+                                          child: Text(
+                                            '[${DateFormat('HH:mm').format(iv.time)}]  PV ${iv.gauge}/${iv.site} -> ${iv.isSuccess ? "成功" : "失敗"}',
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green, letterSpacing: 0.2),
+                                          ),
+                                        ),
+                                      ),
+                                    )),
+                                    ..._remarkLogs.map((rm) => Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
+                                      child: InkWell(
+                                        onTap: () => _showEditDeleteDialog(
+                                          title: '処置メモ No.${rm.number} の修正', initialTime: rm.time, initialAmount: rm.text, amountLabel: 'メモ内容',
+                                          onDelete: () => setState(() { _remarkLogs.removeWhere((r) => r.id == rm.id); for (int i=0; i<_remarkLogs.length; i++) { _remarkLogs[i].number = i + 1; } }),
+                                          onUpdate: (nt, na) => setState(() { int idx = _remarkLogs.indexWhere((r) => r.id == rm.id); if (idx != -1) { _remarkLogs[idx] = RemarkLog(id: rm.id, time: nt, text: na ?? rm.text, number: rm.number); } }),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
+                                          child: Text(
+                                            '[${DateFormat('HH:mm').format(rm.time)}]  No.${rm.number}: ${rm.text}',
+                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade800, letterSpacing: 0.2),
+                                          ),
+                                        ),
+                                      ),
+                                    )),
+
+                                    const Divider(height: 16, thickness: 1),
+
+                                    // ================= 💉 グループB：麻酔・呼吸・薬剤投与（持続＋iv） =================
+                                    const Text('【 麻酔・呼吸・薬剤設定 】', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                                    const SizedBox(height: 4),
+
+                                    // 💡 1. 持続点滴ログ（単位を現在の設定と動的に連動！）
+                                    ..._infusionMap.entries.expand((entry) => entry.value.map((pt) {
+                                      // 薬剤キーに応じて適切な単位を動的に判定
+                                      String unit = '';
+                                      String displayName = entry.key;
+
+                                      if (entry.key == "PropofolInf") {
+                                        displayName = "Propofol civ";
+                                        unit = _propofolInfUnit; // 現在選択されているプロポフォールの単位をリアルタイム反映！
+                                      } else if (entry.key == "O2" || entry.key == "N2O") {
+                                        unit = "L/min";
+                                      }
+
+                                      String logText = pt.isStop
+                                          ? '[${DateFormat('HH:mm').format(pt.time)}]  $displayName: OFF'
+                                          : '[${DateFormat('HH:mm').format(pt.time)}]  $displayName: ${pt.val} $unit';
+
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
+                                        child: InkWell(
+                                          onTap: () => _showEditDeleteDialog(
+                                            title: '$displayName の修正', initialTime: pt.time, initialAmount: pt.isStop ? null : pt.val, amountLabel: '設定値',
+                                            onDelete: () => setState(() => _infusionMap[entry.key]!.removeWhere((p) => p.id == pt.id)),
+                                            onUpdate: (nt, na) => setState(() { int idx = _infusionMap[entry.key]!.indexWhere((p) => p.id == pt.id); if (idx != -1) { _infusionMap[entry.key]![idx].time = nt; if (na != null) _infusionMap[entry.key]![idx] = InfusionPoint(id: pt.id, time: nt, val: na, isStop: pt.isStop); _infusionMap[entry.key]!.sort((a, b) => a.time.compareTo(b.time)); } }),
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
+                                            child: Text(
+                                              logText,
+                                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: pt.isStop ? Colors.red.shade700 : Colors.indigo, letterSpacing: 0.2),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    })),
+
+                                    // 💡 2. ワンショット(iv)・輸液ログ（局麻や輸液の表記を完全統一！）
+                                    ..._bolusLogs.map((b) {
+                                      String displayName = b.drugName;
+                                      String displayAmount = b.amount;
+                                      String unit = b.unit;
+
+                                      // 局所麻酔(LA)の文字列分解とフォーマット統一
+                                      if (b.drugName == 'LA') {
+                                        displayName = _selectedLaDrug;
+                                        unit = 'mL';
+                                        if (b.amount.contains(' ')) {
+                                          displayAmount = b.amount.split(' ').last;
+                                        }
+                                      }
+                                      // 💡 【追加】自由追加薬のリアルタイム連動ロジック
+                                      else if (b.drugName == _customDrugNameController.text.trim()) {
+                                        // 現在右側で入力中の薬名と同じログであれば、右側で選択中の最新単位をリアルタイム反映！
+                                        unit = _selectedCustomUnit;
+                                      }
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
+                                        child: InkWell(
+                                          onTap: () {
+                                            _showEditDeleteDialog(
+                                                title: '$displayName の修正', initialTime: b.time, initialAmount: displayAmount, amountLabel: '投与量',
+                                                onDelete: () => setState(() => _bolusLogs.removeWhere((bl) => bl.id == b.id)),
+                                                onUpdate: (nt, na) => setState(() {
+                                                  int idx = _bolusLogs.indexWhere((bl) => bl.id == b.id);
+                                                  if (idx != -1) {
+                                                    String finalAmount = na ?? displayAmount;
+                                                    if (b.drugName == 'LA') {
+                                                      String prefix = b.amount.split(' ').first;
+                                                      finalAmount = '$prefix $finalAmount';
+                                                    }
+                                                    _bolusLogs[idx].time = nt;
+                                                    _bolusLogs[idx].amount = finalAmount;
+                                                  }
+                                                })
+                                            );
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
+                                            child: Text(
+                                              '[${DateFormat('HH:mm').format(b.time)}]  $displayName: $displayAmount $unit',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.deepPurple, letterSpacing: 0.2),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+
+                                    const Divider(height: 16, thickness: 1),
+
+                                    // ================= 📊 グループC：バイタルサイン履歴（最下部） =================
+                                    const Text('【 バイタルサイン履歴 】', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                                    const SizedBox(height: 4),
+                                    ..._records.map((r) => Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
+                                      child: InkWell(
+                                        onTap: () => _showVitalEditDialog(r),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 4.0),
+                                          child: Text(
+                                            '[${DateFormat('HH:mm').format(r.dateTime)}]  ${r.sbp.toInt()}/${r.dbp.toInt()}  (HR:${r.hr.toInt()})  SpO2:${r.spo2.toInt()}%',
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red, letterSpacing: 0.2),
+                                          ),
+                                        ),
+                                      ),
+                                    )),
+                                    const Divider(height: 16, thickness: 1),
+
+                                    // ================= 📋 グループD：保険算定用サマリー（最下部に追加） =================
+                                    const Text('【 保険算定用データ 】', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.teal)),
+                                    const SizedBox(height: 4),
+                                    Builder(
+                                        builder: (context) {
+                                          final o2Stats = _calculateO2Stats();
+                                          return Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.all(6.0),
+                                            decoration: BoxDecoration(
+                                              color: Colors.teal.shade50,
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: Colors.teal.shade100),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text('酸素投与総時間 : ${o2Stats['time']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal)),
+                                                const SizedBox(height: 2),
+                                                Text('酸素総投与量   : ${o2Stats['amount']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal)),
+                                              ],
+                                            ),
+                                          );
+                                        }
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // COLUMN 3: 右側コントロールパネル
                       Expanded(
                         flex: 3,
                         child: Container(
@@ -1509,7 +1630,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           child: Column(
                             children: [
                               Expanded(
-                                flex: 4,
+                                flex: 4, // 💡「3」から「4」に増やして、イベントボタンが収まる縦幅を確保！
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -1525,13 +1646,13 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             const Text('イベント', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.blueGrey), textAlign: TextAlign.center),
                                             const SizedBox(height: 3),
                                             Expanded(
-                                              child: ListView(
+                                              child: ListView( // 👈 Column から ListView に変更（ボタンがはみ出さないようにするため）
                                                 children: _events.map((e) {
                                                   bool settled = e.time != null;
-                                                  return SizedBox(
-                                                    height: 33,
+                                                  return SizedBox( // 👈 Expanded から SizedBox に変更
+                                                    height: 33,    // 👈 ボタンの高さを 34px にカチッと固定（余白込みで調整）
                                                     child: Padding(
-                                                      padding: const EdgeInsets.symmetric(vertical: 1.5),
+                                                      padding: const EdgeInsets.symmetric(vertical: 1.5), // 💡 上下余白を少し広げて押しやすく
                                                       child: InkWell(
                                                         onTap: () {
                                                           if (settled) {
@@ -1540,8 +1661,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                             setState(() {
                                                               _initStartTimeIfNeeded();
                                                               final now = DateTime.now();
-                                                              e.time = now;
+                                                              e.time = now; // 元々のイベント時刻保存
 
+                                                              // 💡 押されたイベント名（e.name）に応じて、算定用の変数にも時刻を保存！
                                                               if (e.name == '麻酔開始') {
                                                                 _anesthesiaStartTime = now;
                                                               } else if (e.name == '麻酔終了') {
@@ -1610,6 +1732,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   ),
                                                 ]),
                                                 const SizedBox(height: 5),
+                                                // 💡 ボタンを押すと、PVと同時に、輸液の最初の投与量「0」を同時プロット！
                                                 SizedBox(
                                                   width: double.infinity,
                                                   height: 28,
@@ -1619,6 +1742,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                           _initStartTimeIfNeeded();
                                                           DateTime now = DateTime.now();
                                                           _ivRecords.add(IvRecord(id: now.toString(), time: now, gauge: _selectedIvGauge, site: _selectedIvSite, isSuccess: true));
+
+                                                          // 💡 輸液用のデータとして、ワンショット（Bolus）と同じログ形式で「0」を登録します
                                                           _bolusLogs.add(BolusLog(id: 'fluid_${now.toString()}', time: now, drugName: _selectedFluidType, amount: '0', unit: 'mL'));
                                                         });
                                                       },
@@ -1668,11 +1793,12 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           label: 'O2 流量 :',
                                           child: TextField(controller: _o2Controller, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'L/min', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
                                           suffix: Row(children: [
+                                            // 💡 投与ボタンを押したらO2入力欄をクリア
                                             Expanded(child: ElevatedButton(
                                                 onPressed: () {
-                                                  if (_o2Controller.text.isEmpty) return;
+                                                  if (_o2Controller.text.isEmpty) return; // 空っぽ安全ガード
                                                   _addInfusionPoint('O2', _o2Controller.text);
-                                                  _o2Controller.clear();
+                                                  _o2Controller.clear(); // 👈 スカッと消去！
                                                 },
                                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
                                                 child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))
@@ -1686,11 +1812,12 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           label: 'N2O 流量 :',
                                           child: TextField(controller: _n2oController, keyboardType: const TextInputType.numberWithOptions(decimal: true), style: const TextStyle(fontSize: 11), decoration: const InputDecoration(hintText: 'L/min', contentPadding: EdgeInsets.symmetric(horizontal: 4), border: OutlineInputBorder())),
                                           suffix: Row(children: [
+                                            // 💡 投与ボタンを押したらN2O入力欄をクリア
                                             Expanded(child: ElevatedButton(
                                                 onPressed: () {
-                                                  if (_n2oController.text.isEmpty) return;
+                                                  if (_n2oController.text.isEmpty) return; // 空っぽ安全ガード
                                                   _addInfusionPoint('N2O', _n2oController.text);
-                                                  _n2oController.clear();
+                                                  _n2oController.clear(); // 👈 スカッと消去！
                                                 },
                                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.lightBlue.shade700, foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
                                                 child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))
@@ -1708,11 +1835,12 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             DropdownButton<String>(value: _propofolInfUnit, isDense: true, items: ['mg/kg/h', 'mL/h', 'μg/mL'].map((u) => DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontSize: 9)))).toList(), onChanged: (v) => setState(() => _propofolInfUnit = v!)),
                                           ]),
                                           suffix: Row(children: [
+                                            // 💡 【修正】onPressed の中身を多重処理（投与 ➔ クリア）に変更します！
                                             Expanded(child: ElevatedButton(
                                                 onPressed: () {
-                                                  if (_propofolInfController.text.isEmpty) return;
+                                                  if (_propofolInfController.text.isEmpty) return; // 空っぽの時は何もしない安全ガード
                                                   _addInfusionPoint('PropofolInf', _propofolInfController.text);
-                                                  _propofolInfController.clear();
+                                                  _propofolInfController.clear(); // 👈 これで入力欄がスカッと空になります！
                                                 },
                                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.purple, foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
                                                 child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))
@@ -1772,7 +1900,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 if (dName.isEmpty || dAmount.isEmpty) return;
 
                                                 _addBolus(dName, dAmount, _selectedCustomUnit);
-                                                _customDrugAmountController.clear();
+
+                                                // 💡 【修正】薬剤名コントローラーのクリアを削除！量だけをクリアします。
+                                                _customDrugAmountController.clear(); // 👈 量だけをスカッと空っぽに
                                               },
                                               style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade800, foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
                                               child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))
@@ -1781,7 +1911,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                       _alignedDrugRow(
                                           label: '$_selectedFluidType :',
                                           child: TextField(
-                                              controller: _fluidController,
+                                              controller: _fluidController, // 💡 ステップ0で宣言したコントローラー
                                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                               style: const TextStyle(fontSize: 11),
                                               decoration: const InputDecoration(
@@ -1795,6 +1925,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 if (_fluidController.text.isEmpty) return;
                                                 setState(() {
                                                   _initStartTimeIfNeeded();
+                                                  // 💡 ルート確保ボタンと同じ「今選ばれている輸液名（_selectedFluidType）」でデータを追加！
                                                   _bolusLogs.add(BolusLog(
                                                       id: DateTime.now().toString(),
                                                       time: DateTime.now(),
@@ -1803,7 +1934,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                       unit: 'mL'
                                                   ));
                                                 });
-                                                _fluidController.clear();
+                                                _fluidController.clear(); // 入力欄を空にする
                                               },
                                               style: ElevatedButton.styleFrom(
                                                   backgroundColor: Colors.blueGrey,
@@ -1835,7 +1966,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           ),
                         ),
                       ),
-                    ], // 一番外側の Row を閉じる
+                    ],
                   ),
                 ),
               ],
