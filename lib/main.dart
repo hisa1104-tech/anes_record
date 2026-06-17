@@ -228,15 +228,33 @@ class _MainRecordPageState extends State<MainRecordPage> {
   DateTime? _opEndTime;
 
   final GlobalKey _chartCaptureKey = GlobalKey();
+  // 📸 1. 画面の指定範囲（RepaintBoundary）を画像データに変換する関数
+  Future<Uint8List?> _captureChartImage() async {
+    try {
+      // 鍵から現在の状態（RenderRepaintBoundary）を取得
+      RenderRepaintBoundary? boundary = _chartCaptureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+
+      // 高解像度（pixelRatio: 3.0）で画像（ui.Image）に変換
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+
+      // Flutterで扱えるバイトデータ（PNG形式）に変換
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (e) {
+      print("画像キャプチャに失敗しました: $e");
+      return null;
+    }
+  }
 
   Future<void> _generatePdf() async {
     try {
       print('--- 【ログ】A4横向き・3段コンパクトPDF生成スタート ---');
 
+      // 💡 1. 描画の確定を少し待ってから、画面から「グラフ＋タイムライン＋ログ」をパシャッと撮影
       await Future.delayed(const Duration(milliseconds: 200));
+      final Uint8List? capturedImageBytes = await _captureChartImage();
 
-      //final fontRegular = await PdfGoogleFonts.notoSansJPRegular();
-      //final fontBold = await PdfGoogleFonts.notoSansJPBold();
       final pw.Font fontRegular = await PdfGoogleFonts.notoSansJPRegular();
       final pw.Font fontBold = await PdfGoogleFonts.notoSansJPBold();
       final pdf = pw.Document();
@@ -245,14 +263,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4.landscape,
-          margin: const pw.EdgeInsets.all(25), // 下部エリアを広げるためマージンを少しタイトに調整
+          margin: const pw.EdgeInsets.all(25),
           theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           build: (pw.Context context) {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 // =========================================================================
-                // タイトルヘッダー
+                // タイトルヘッダー（★しっかり残しています）
                 // =========================================================================
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -266,7 +284,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 pw.SizedBox(height: 6),
 
                 // =========================================================================
-                // 【上部レイアウト】3段構成のコンパクト情報エリア
+                // 【上部レイアウト】3段構成のコンパクト情報エリア（★しっかり残しています）
                 // =========================================================================
                 pw.Container(
                   padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -307,8 +325,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                 pw.Text('術前診断: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 pw.Expanded(
                                   child: pw.FittedBox(
-                                    fit: pw.BoxFit.scaleDown, // 💡 枠を超えそうになると自動縮小する魔法の設定
-                                    alignment: pw.Alignment.centerLeft, // 左寄せを維持
+                                    fit: pw.BoxFit.scaleDown,
+                                    alignment: pw.Alignment.centerLeft,
                                     child: pw.Text(
                                       _pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text,
                                       style: const pw.TextStyle(fontSize: 9),
@@ -326,7 +344,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                 pw.Text('予定術式: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 pw.Expanded(
                                   child: pw.FittedBox(
-                                    fit: pw.BoxFit.scaleDown, // 💡 ここも同様に自動縮小
+                                    fit: pw.BoxFit.scaleDown,
                                     alignment: pw.Alignment.centerLeft,
                                     child: pw.Text(
                                       _pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text,
@@ -349,8 +367,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           pw.Text('■ 管理情報：', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
                           pw.SizedBox(width: 4),
                           pw.Expanded(child: pw.Text('麻酔担当医: ${_anesthetistCtrl.text.isEmpty ? "未入力" : _anesthetistCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-
-                          // 💡 画面のロジックと同じ _calculateTotalMinutes メソッドをここで呼び出して直接埋め込みます
                           pw.Expanded(
                             child: pw.Text(
                               '手術時間: ${_calculateTotalMinutes(_opStartTime, _opEndTime)}',
@@ -363,8 +379,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               style: const pw.TextStyle(fontSize: 9),
                             ),
                           ),
-
-                          pw.Expanded(child: pw.SizedBox()), // バランス調整用の空スペース
+                          pw.Expanded(child: pw.SizedBox()),
                           pw.Expanded(child: pw.SizedBox()),
                         ],
                       ),
@@ -373,321 +388,23 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 ),
 
                 // =========================================================================
-                // 【下部レイアウト】左側：バイタルグラフ＆タイムライン / 右側：過去ログ（予定）
+                // 【下部レイアウト】差し替えエリア
+                // 💡 複雑な手書きロジックを廃止し、画面から直接撮影した「本物のデータ画像」を綺麗にハメ込みます！
                 // =========================================================================
                 pw.SizedBox(height: 10),
                 pw.Expanded(
-                  child: pw.Row(
-                    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-                    children: [
-
-                      // -------------------------------------------------------------------
-                      // 📊 【左側 2/3】バイタルサイン・トレンド ＆ 薬剤タイムラインエリア
-                      // -------------------------------------------------------------------
-                      pw.Expanded(
-                        flex: 2,
-                        child: pw.Container(
-                          padding: const pw.EdgeInsets.all(8),
-                          decoration: pw.BoxDecoration(
-                            border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                          ),
-                          child: _records.isEmpty
-                              ? pw.Center(child: pw.Text('バイタルデータがありません', style: pw.TextStyle(font: fontRegular, fontSize: 10)))
-                              : pw.LayoutBuilder(
-                            builder: (context, constraints) {
-                              // --- 1. 数理計算（アプリのロジックを忠実に適用） ---
-                              double computedMaxY = 200;
-                              double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
-
-                              if (_startTime != null) {
-                                for (var r in _records) {
-                                  if (r.sbp > computedMaxY) computedMaxY = r.sbp + 20;
-                                  double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
-                                  if (m > maxMinutes) maxMinutes = m + 5;
-                                }
-                              }
-
-                              double interval = 5.0;
-                              if (maxMinutes >= 180) { interval = 30.0; }
-                              else if (maxMinutes >= 120) { interval = 20.0; }
-                              else if (maxMinutes >= 60) { interval = 10.0; }
-
-                              return pw.Column(
-                                children: [
-
-                                  // -------------------------------------------------
-                                  // ① 【上段】凡例 ＋ 縦軸 ＋ グラフ本体
-                                  // -------------------------------------------------
-                                  pw.Expanded(
-                                    flex: 3, // グラフの高さを広めに確保
-                                    child: pw.Row(
-                                      children: [
-                                        // 📌 【凡例 (Legend) エリア】アプリの左側を再現
-                                        pw.Container(
-                                          width: 35,
-                                          child: pw.Column(
-                                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                            mainAxisAlignment: pw.MainAxisAlignment.start,
-                                            children: [
-                                              pw.Text('【バイタル】', style: pw.TextStyle(font: fontRegular, fontSize: 6, color: PdfColors.grey700)),
-                                              pw.SizedBox(height: 2),
-                                              pw.Text('∨ sBP', style: pw.TextStyle(font: fontRegular, fontSize: 6, color: PdfColors.red600, fontWeight: pw.FontWeight.bold)),
-                                              pw.Text('∧ dBP', style: pw.TextStyle(font: fontRegular, fontSize: 6, color: PdfColors.red400, fontWeight: pw.FontWeight.bold)),
-                                              pw.Text('■ HR', style: pw.TextStyle(font: fontRegular, fontSize: 6, color: PdfColors.green600, fontWeight: pw.FontWeight.bold)),
-                                              pw.Text('● SpO2', style: pw.TextStyle(font: fontRegular, fontSize: 6, color: PdfColors.cyan600, fontWeight: pw.FontWeight.bold)),
-                                            ],
-                                          ),
-                                        ),
-
-                                        // 📊 【縦軸 (Y軸) 数字エリア】
-                                        // 💡 グラフ内の yVal ループと完全に同じ数・同じステップで、上から下へ数字を並べます
-                                        pw.Container(
-                                          width: 18, // 数字が隠れないよう少し広めに確保
-                                          child: pw.Column(
-                                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment: pw.CrossAxisAlignment.end,
-                                            children: List.generate((computedMaxY / 20).toInt() + 1, (index) {
-                                              // 💡 ループの総数から index を引くことで、上から下に向かって大きい順（例: 200, 180 ... 0）に綺麗に整列させます
-                                              final int maxSteps = (computedMaxY / 20).toInt();
-                                              final yVal = (maxSteps - index) * 20;
-
-                                              return pw.Text(
-                                                '$yVal',
-                                                style: pw.TextStyle(font: fontRegular, fontSize: 5.5, color: PdfColors.grey700),
-                                              );
-                                            }),
-                                          ),
-                                        ),
-                                        pw.SizedBox(width: 4),
-
-                                        // 📈 【グラフキャンバス】
-                                        pw.Expanded(
-                                          child: pw.CustomPaint(
-                                            size: const PdfPoint(0, 0),
-                                            painter: (PdfGraphics canvas, PdfPoint size) {
-                                              final double graphWidth = size.x;
-                                              final double graphHeight = size.y;
-
-                                              // 💡 【超重要】左側のColumn（0〜200）と高さを100%一致させるため、
-                                              // グラフ自体の数理空間を完全に固定します。
-                                              double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
-
-                                              if (_startTime != null) {
-                                                for (var r in _records) {
-                                                  double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
-                                                  if (m > maxMinutes) maxMinutes = m + 5;
-                                                }
-                                              }
-
-                                              double interval = 5.0;
-                                              if (maxMinutes >= 180) { interval = 30.0; }
-                                              else if (maxMinutes >= 120) { interval = 20.0; }
-                                              else if (maxMinutes >= 60) { interval = 10.0; }
-
-                                              // 💡 座標変換の数理をシンプルかつ正確に統一
-                                              double getX(double minutes) => (minutes / maxMinutes) * graphWidth;
-                                              double getY(double value) => (value / computedMaxY) * graphHeight;
-
-                                              // 1. 背景グリッド（横線）の描画
-                                              // 💡 左側の数字（20刻み）と完全に同じ位置に線を引きます
-                                              canvas.setStrokeColor(PdfColors.grey300);
-                                              canvas.setLineWidth(0.5);
-
-                                              final int totalSteps = (computedMaxY / 20).toInt();
-                                              for (int i = 0; i <= totalSteps; i++) {
-                                                double yVal = i * 20;
-                                                double yPos = getY(yVal);
-
-                                                canvas.moveTo(0, yPos);
-                                                canvas.lineTo(graphWidth, yPos);
-                                                canvas.strokePath();
-                                              }
-
-                                              // 2. 背景グリッド（縦線）の描画
-                                              for (double mVal = 0; mVal <= maxMinutes; mVal += interval) {
-                                                double xPos = getX(mVal);
-                                                canvas.moveTo(xPos, 0);
-                                                canvas.lineTo(xPos, graphHeight);
-                                                canvas.strokePath();
-                                              }
-
-                                              // 3. 外枠の描画
-                                              canvas.setStrokeColor(PdfColors.grey400);
-                                              canvas.setLineWidth(0.5);
-                                              canvas.drawRect(0, 0, graphWidth, graphHeight);
-                                              canvas.strokePath();
-
-                                              // 4. バイタルプロット（線と図形記号）の描画
-                                              PdfPoint? lastHrPoint;
-                                              PdfPoint? lastSpo2Point;
-
-                                              for (var r in _records) {
-                                                if (_startTime == null) continue;
-                                                double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
-                                                double x = getX(m);
-
-                                                double ySbp = getY(r.sbp.toDouble());
-                                                double yDbp = getY(r.dbp.toDouble());
-                                                double yHr = getY(r.hr.toDouble());
-                                                double ySpo2 = getY(r.spo2.toDouble());
-
-                                                // HR（緑）の結線
-                                                if (lastHrPoint != null) {
-                                                  canvas.setStrokeColor(PdfColors.green600);
-                                                  canvas.setLineWidth(1.0);
-                                                  canvas.moveTo(lastHrPoint.x, lastHrPoint.y);
-                                                  canvas.lineTo(x, yHr);
-                                                  canvas.strokePath();
-                                                }
-                                                lastHrPoint = PdfPoint(x, yHr);
-
-                                                // SpO2（シアン）の結線
-                                                if (lastSpo2Point != null) {
-                                                  canvas.setStrokeColor(PdfColors.cyan600);
-                                                  canvas.setLineWidth(1.0);
-                                                  canvas.moveTo(lastSpo2Point.x, lastSpo2Point.y);
-                                                  canvas.lineTo(x, ySpo2);
-                                                  canvas.strokePath();
-                                                }
-                                                lastSpo2Point = PdfPoint(x, ySpo2);
-
-                                                final double h = 3.0; // 記号のサイズ
-
-                                                // sBP: V
-                                                canvas.setStrokeColor(PdfColors.red600);
-                                                canvas.setLineWidth(1.0);
-                                                canvas.moveTo(x - h, ySbp + h);
-                                                canvas.lineTo(x, ySbp - h);
-                                                canvas.lineTo(x + h, ySbp + h);
-                                                canvas.strokePath();
-
-                                                // dBP: 逆V
-                                                canvas.moveTo(x - h, yDbp - h);
-                                                canvas.lineTo(x, yDbp + h);
-                                                canvas.lineTo(x + h, yDbp - h);
-                                                canvas.strokePath();
-
-                                                // HR: ■
-                                                canvas.setFillColor(PdfColors.green600);
-                                                canvas.drawRect(x - 2, yHr - 2, 4, 4);
-                                                canvas.fillPath();
-
-                                                // SpO2: ●
-                                                canvas.setFillColor(PdfColors.cyan600);
-                                                canvas.drawEllipse(x, ySpo2, 2.5, 2.5);
-                                                canvas.fillPath();
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  pw.SizedBox(height: 2),
-
-                                  // -------------------------------------------------
-                                  // ② 【中段】時間軸ラベル（HH:mm）
-                                  // -------------------------------------------------
-                                  pw.Row(
-                                    children: [
-                                      pw.SizedBox(width: 54), // 凡例(35) + 縦軸(15) + マージン(4) に完全に合わせる
-                                      pw.Expanded(
-                                        child: pw.Row(
-                                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                                          children: List.generate((maxMinutes / interval).toInt() + 1, (index) {
-                                            final currentM = index * interval;
-                                            final actualTime = _startTime!.add(Duration(minutes: currentM.toInt()));
-                                            return pw.Text(
-                                              DateFormat('HH:mm').format(actualTime),
-                                              style: pw.TextStyle(font: fontRegular, fontSize: 5, color: PdfColors.grey700),
-                                            );
-                                          }),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  pw.SizedBox(height: 4),
-
-                                  // -------------------------------------------------
-                                  // ③ 【下段】イベント・薬剤タイムライン（グリッド化）
-                                  // -------------------------------------------------
-                                  ...['イベント', '処置メモ/PV', 'O2 [L/min]', 'Propofol civ [mL/h]', 'Propofol iv [mg]', '酢酸リンゲル [mL]'].map((title) {
-                                    return pw.Row(
-                                      children: [
-                                        // 左側の薬剤・イベント名ラベル
-                                        pw.Container(
-                                          width: 54, // 上記の幅と完全に合わせることで縦ラインが揃います
-                                          padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
-                                          decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300, width: 0.3)),
-                                          child: pw.Text(' $title', style: pw.TextStyle(font: fontRegular, fontSize: 5, color: PdfColors.grey800)),
-                                        ),
-                                        // 各時間軸に対応するデータマス（グリッド）
-                                        pw.Expanded(
-                                          child: pw.Row(
-                                            children: List.generate((maxMinutes / interval).toInt() + 1, (index) {
-                                              // 💡 ここに、各時間帯に対応するスタンプや投与量を表示するロジックを入れられます
-                                              String cellText = '';
-                                              //if (title == 'イベント' && index == 2) cellText = '🐾'; // アプリのアイコン風ダミー
-
-                                              return pw.Expanded(
-                                                child: pw.Container(
-                                                  height: 10,
-                                                  alignment: pw.Alignment.center,
-                                                  decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey200, width: 0.3)),
-                                                  child: pw.Text(cellText, style: pw.TextStyle(font: fontRegular, fontSize: 5)),
-                                                ),
-                                              );
-                                            }),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  }).toList(),
-
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-
-                      pw.SizedBox(width: 6),
-
-                      // ---------------- 💡 新設 【右側 1/3】 記録一覧ログ ----------------
-                      pw.Expanded(
-                        flex: 1,
-                        child: pw.Container(
-                          padding: const pw.EdgeInsets.all(6),
-                          decoration: pw.BoxDecoration(
-                            border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                          ),
-                          child: pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: [
-                              pw.Text('【 記録一覧ログ 】', style: pw.TextStyle(font: fontBold, fontSize: 7, color: PdfColors.blue800)),
-                              pw.SizedBox(height: 4),
-                              pw.Expanded(
-                                child: pw.ListView(
-                                  children: [
-                                    pw.Text('[19:26] (E) 入室', style: pw.TextStyle(font: fontRegular, fontSize: 6)),
-                                    pw.Text('[19:26] (×) 麻酔開始', style: pw.TextStyle(font: fontRegular, fontSize: 6)),
-                                    pw.Text('[19:26] (IC) 導入完了', style: pw.TextStyle(font: fontRegular, fontSize: 6)),
-                                    pw.Text('[19:26] (◎) 手術開始', style: pw.TextStyle(font: fontRegular, fontSize: 6)),
-                                    pw.SizedBox(height: 6),
-                                    pw.Text('【 バイタルサイン履歴 】', style: pw.TextStyle(font: fontBold, fontSize: 6, color: PdfColors.grey700)),
-                                    pw.Text('[19:24] 123/45 (HR:67) SpO2:98%', style: pw.TextStyle(font: fontRegular, fontSize: 6, color: PdfColors.red600)),
-                                    pw.Text('[19:27] 210/110 (HR:89) SpO2:98%', style: pw.TextStyle(font: fontRegular, fontSize: 6, color: PdfColors.red600)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                    ],
+                  child: capturedImageBytes == null
+                      ? pw.Center(child: pw.Text('データの取得に失敗しました', style: pw.TextStyle(font: fontRegular, fontSize: 11)))
+                      : pw.Container(
+                    width: double.infinity,
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                    ),
+                    child: pw.Image(
+                      pw.MemoryImage(capturedImageBytes),
+                      fit: pw.BoxFit.contain, // 縦横比を維持して、印刷可能エリアにジャストフィットさせる
+                    ),
                   ),
                 ),
 
