@@ -464,25 +464,47 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         // 📈 【グラフキャンバス】
                                         pw.Expanded(
                                           child: pw.CustomPaint(
-                                            size: PdfPoint(constraints?.maxWidth ?? 300, 140), // 描画空間を明示的に固定
+                                            size: const PdfPoint(0, 0),
                                             painter: (PdfGraphics canvas, PdfPoint size) {
                                               final double graphWidth = size.x;
                                               final double graphHeight = size.y;
 
+                                              // 💡 【超重要】左側のColumn（0〜200）と高さを100%一致させるため、
+                                              // グラフ自体の数理空間を完全に固定します。
+                                              double maxMinutes = _selectedTimelineMinutes <= 0 ? 30.0 : _selectedTimelineMinutes;
+
+                                              if (_startTime != null) {
+                                                for (var r in _records) {
+                                                  double m = r.dateTime.difference(_startTime!).inMinutes.toDouble();
+                                                  if (m > maxMinutes) maxMinutes = m + 5;
+                                                }
+                                              }
+
+                                              double interval = 5.0;
+                                              if (maxMinutes >= 180) { interval = 30.0; }
+                                              else if (maxMinutes >= 120) { interval = 20.0; }
+                                              else if (maxMinutes >= 60) { interval = 10.0; }
+
+                                              // 💡 座標変換の数理をシンプルかつ正確に統一
                                               double getX(double minutes) => (minutes / maxMinutes) * graphWidth;
                                               double getY(double value) => (value / computedMaxY) * graphHeight;
 
-                                              // 背景グリッド（横線）
+                                              // 1. 背景グリッド（横線）の描画
+                                              // 💡 左側の数字（20刻み）と完全に同じ位置に線を引きます
                                               canvas.setStrokeColor(PdfColors.grey300);
                                               canvas.setLineWidth(0.5);
-                                              for (double yVal = 0; yVal <= computedMaxY; yVal += 20) {
+
+                                              final int totalSteps = (computedMaxY / 20).toInt();
+                                              for (int i = 0; i <= totalSteps; i++) {
+                                                double yVal = i * 20;
                                                 double yPos = getY(yVal);
+
                                                 canvas.moveTo(0, yPos);
                                                 canvas.lineTo(graphWidth, yPos);
                                                 canvas.strokePath();
                                               }
 
-                                              // 背景グリッド（縦線）
+                                              // 2. 背景グリッド（縦線）の描画
                                               for (double mVal = 0; mVal <= maxMinutes; mVal += interval) {
                                                 double xPos = getX(mVal);
                                                 canvas.moveTo(xPos, 0);
@@ -490,13 +512,13 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 canvas.strokePath();
                                               }
 
-                                              // 外枠
+                                              // 3. 外枠の描画
                                               canvas.setStrokeColor(PdfColors.grey400);
                                               canvas.setLineWidth(0.5);
                                               canvas.drawRect(0, 0, graphWidth, graphHeight);
                                               canvas.strokePath();
 
-                                              // バイタルプロット線の描画
+                                              // 4. バイタルプロット（線と図形記号）の描画
                                               PdfPoint? lastHrPoint;
                                               PdfPoint? lastSpo2Point;
 
@@ -513,6 +535,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 // HR（緑）の結線
                                                 if (lastHrPoint != null) {
                                                   canvas.setStrokeColor(PdfColors.green600);
+                                                  canvas.setLineWidth(1.0);
                                                   canvas.moveTo(lastHrPoint.x, lastHrPoint.y);
                                                   canvas.lineTo(x, yHr);
                                                   canvas.strokePath();
@@ -522,27 +545,38 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 // SpO2（シアン）の結線
                                                 if (lastSpo2Point != null) {
                                                   canvas.setStrokeColor(PdfColors.cyan600);
+                                                  canvas.setLineWidth(1.0);
                                                   canvas.moveTo(lastSpo2Point.x, lastSpo2Point.y);
                                                   canvas.lineTo(x, ySpo2);
                                                   canvas.strokePath();
                                                 }
                                                 lastSpo2Point = PdfPoint(x, ySpo2);
 
-                                                // 記号描画
-                                                final double h = 2.5;
+                                                final double h = 3.0; // 記号のサイズ
+
                                                 // sBP: V
                                                 canvas.setStrokeColor(PdfColors.red600);
-                                                canvas.moveTo(x - h, ySbp + h); canvas.lineTo(x, ySbp - h); canvas.lineTo(x + h, ySbp + h);
+                                                canvas.setLineWidth(1.0);
+                                                canvas.moveTo(x - h, ySbp + h);
+                                                canvas.lineTo(x, ySbp - h);
+                                                canvas.lineTo(x + h, ySbp + h);
                                                 canvas.strokePath();
+
                                                 // dBP: 逆V
-                                                canvas.moveTo(x - h, yDbp - h); canvas.lineTo(x, yDbp + h); canvas.lineTo(x + h, yDbp - h);
+                                                canvas.moveTo(x - h, yDbp - h);
+                                                canvas.lineTo(x, yDbp + h);
+                                                canvas.lineTo(x + h, yDbp - h);
                                                 canvas.strokePath();
+
                                                 // HR: ■
                                                 canvas.setFillColor(PdfColors.green600);
-                                                canvas.drawRect(x - 1.5, yHr - 1.5, 3, 3); canvas.fillPath();
+                                                canvas.drawRect(x - 2, yHr - 2, 4, 4);
+                                                canvas.fillPath();
+
                                                 // SpO2: ●
                                                 canvas.setFillColor(PdfColors.cyan600);
-                                                canvas.drawEllipse(x, ySpo2, 2, 2); canvas.fillPath();
+                                                canvas.drawEllipse(x, ySpo2, 2.5, 2.5);
+                                                canvas.fillPath();
                                               }
                                             },
                                           ),
