@@ -441,14 +441,21 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         ),
 
                                         // 📊 【縦軸 (Y軸) 数字エリア】
+                                        // 💡 グラフ内の yVal ループと完全に同じ数・同じステップで、上から下へ数字を並べます
                                         pw.Container(
-                                          width: 15,
+                                          width: 18, // 数字が隠れないよう少し広めに確保
                                           child: pw.Column(
                                             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                                             crossAxisAlignment: pw.CrossAxisAlignment.end,
                                             children: List.generate((computedMaxY / 20).toInt() + 1, (index) {
-                                              final yVal = (computedMaxY - (index * 20)).toInt();
-                                              return pw.Text('$yVal', style: pw.TextStyle(font: fontRegular, fontSize: 5, color: PdfColors.grey700));
+                                              // 💡 ループの総数から index を引くことで、上から下に向かって大きい順（例: 200, 180 ... 0）に綺麗に整列させます
+                                              final int maxSteps = (computedMaxY / 20).toInt();
+                                              final yVal = (maxSteps - index) * 20;
+
+                                              return pw.Text(
+                                                '$yVal',
+                                                style: pw.TextStyle(font: fontRegular, fontSize: 5.5, color: PdfColors.grey700),
+                                              );
                                             }),
                                           ),
                                         ),
