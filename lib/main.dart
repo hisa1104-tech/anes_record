@@ -291,92 +291,71 @@ class _MainRecordPageState extends State<MainRecordPage> {
                   ),
                   child: pw.Column(
                     children: [
-                      // ✨ 【1段目】患者情報
+                      // ✨ 【1段目】患者情報（レイアウト最適化版）
                       pw.Row(
                         children: [
-                          pw.Text('■ 患者情報：', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
-                          pw.SizedBox(width: 4),
-                          pw.Expanded(child: pw.Text('患者ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                          pw.Expanded(child: pw.Text('氏名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                          pw.Expanded(child: pw.Text('年齢: ${_pAgeCtrl.text.isEmpty ? "ー" : _pAgeCtrl.text} 歳', style: const pw.TextStyle(fontSize: 9))),
-                          pw.Expanded(child: pw.Text('性別: ${_pGender.isEmpty ? "ー" : _pGender}', style: const pw.TextStyle(fontSize: 9))),
-                          pw.Expanded(child: pw.Text('身長: ${_pHeightCtrl.text.isEmpty ? "ー" : _pHeightCtrl.text} cm', style: const pw.TextStyle(fontSize: 9))),
-                          pw.Expanded(child: pw.Text('体重: ${_pWeightCtrl.text.isEmpty ? "ー" : _pWeightCtrl.text} kg', style: const pw.TextStyle(fontSize: 9))),
-                          pw.Expanded(child: pw.Text('BMI: $bmiString', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal900))),
+                          // ID: 12桁程度を想定
+                          pw.Container(width: 85, child: pw.Text('患者ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+                          // 氏名: 全角10文字程度を想定
+                          pw.Container(width: 125, child: pw.Text('氏名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+
+                          // 以下の項目は必要分だけ幅をとる
+                          pw.SizedBox(width: 40, child: pw.Text('年齢: ${_pAgeCtrl.text}歳', style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 35, child: pw.Text('性別: ${_pGender}', style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 55, child: pw.Text('身長: ${_pHeightCtrl.text}cm', style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 55, child: pw.Text('体重: ${_pWeightCtrl.text}kg', style: const pw.TextStyle(fontSize: 9))),
+                          pw.Text('BMI: $bmiString', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal900)),
                         ],
                       ),
                       pw.SizedBox(height: 4),
                       pw.Divider(thickness: 0.3, color: PdfColors.grey300),
                       pw.SizedBox(height: 4),
 
-                      // ✨ 【2段目】手術情報（自動縮小版）
+                      // 👇 【ここから変更：手術情報を上下2段に分割】
+                      // ✨ 【2段目】病名
                       pw.Row(
                         children: [
-                          pw.Text('■ 手術情報：', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
-                          pw.SizedBox(width: 4),
+                          pw.Text('術前診断: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                           pw.Expanded(
-                            flex: 3,
-                            child: pw.Row(
-                              children: [
-                                pw.Text('術前診断: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                                pw.Expanded(
-                                  child: pw.FittedBox(
-                                    fit: pw.BoxFit.scaleDown,
-                                    alignment: pw.Alignment.centerLeft,
-                                    child: pw.Text(
-                                      _pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text,
-                                      style: const pw.TextStyle(fontSize: 9),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          pw.SizedBox(width: 15),
-                          pw.Expanded(
-                            flex: 4,
-                            child: pw.Row(
-                              children: [
-                                pw.Text('予定術式: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                                pw.Expanded(
-                                  child: pw.FittedBox(
-                                    fit: pw.BoxFit.scaleDown,
-                                    alignment: pw.Alignment.centerLeft,
-                                    child: pw.Text(
-                                      _pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text,
-                                      style: const pw.TextStyle(fontSize: 9),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            child: pw.FittedBox(
+                              fit: pw.BoxFit.scaleDown,
+                              alignment: pw.Alignment.centerLeft,
+                              child: pw.Text(
+                                _pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text,
+                                style: const pw.TextStyle(fontSize: 9),
+                              ),
                             ),
                           ),
                         ],
                       ),
+                      pw.SizedBox(height: 3), // 行間の微調整
+                      // ✨ 【3段目】術式
+                      pw.Row(
+                        children: [
+                          pw.Text('予定術式: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                          pw.Expanded(
+                            child: pw.FittedBox(
+                              fit: pw.BoxFit.scaleDown,
+                              alignment: pw.Alignment.centerLeft,
+                              child: pw.Text(
+                                _pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text,
+                                style: const pw.TextStyle(fontSize: 9),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // 👆 【ここまで変更】
                       pw.SizedBox(height: 4),
                       pw.Divider(thickness: 0.3, color: PdfColors.grey300),
                       pw.SizedBox(height: 4),
 
-                      // ✨ 【3段目】麻酔担当医・手術時間・麻酔時間
+                      // ✨ 【4段目】管理情報（ラベル削除版）
                       pw.Row(
                         children: [
-                          pw.Text('■ 管理情報：', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal800)),
-                          pw.SizedBox(width: 4),
-                          pw.Expanded(child: pw.Text('麻酔担当医: ${_anesthetistCtrl.text.isEmpty ? "未入力" : _anesthetistCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
-                          pw.Expanded(
-                            child: pw.Text(
-                              '手術時間: ${_calculateTotalMinutes(_opStartTime, _opEndTime)}',
-                              style: const pw.TextStyle(fontSize: 9),
-                            ),
-                          ),
-                          pw.Expanded(
-                            child: pw.Text(
-                              '麻酔時間: ${_calculateTotalMinutes(_anesthesiaStartTime, _anesthesiaEndTime)}',
-                              style: const pw.TextStyle(fontSize: 9),
-                            ),
-                          ),
-                          pw.Expanded(child: pw.SizedBox()),
-                          pw.Expanded(child: pw.SizedBox()),
+                          pw.Container(width: 150, child: pw.Text('麻酔担当医: ${_anesthetistCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+                          pw.Container(width: 100, child: pw.Text('手術時間: ${_calculateTotalMinutes(_opStartTime, _opEndTime)}', style: const pw.TextStyle(fontSize: 9))),
+                          pw.Container(width: 100, child: pw.Text('麻酔時間: ${_calculateTotalMinutes(_anesthesiaStartTime, _anesthesiaEndTime)}', style: const pw.TextStyle(fontSize: 9))),
                         ],
                       ),
                     ],
