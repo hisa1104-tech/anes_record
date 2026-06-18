@@ -280,7 +280,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 pw.SizedBox(height: 6),
 
                 // =========================================================================
-                // 【上部レイアウト】3段構成（実際は4行）のコンパクト情報エリア
+                // 【上部レイアウト】3段構成のコンパクト情報エリア（★しっかり残しています）
                 // =========================================================================
                 pw.Container(
                   padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -291,50 +291,27 @@ class _MainRecordPageState extends State<MainRecordPage> {
                   ),
                   child: pw.Column(
                     children: [
-                      // ✨ 【1段目】患者情報（ラベル削除・フォント打ち分け版）
+                      // ✨ 【1段目】患者情報（レイアウト最適化版）
                       pw.Row(
                         children: [
-                          // 患者ID (幅85)
-                          pw.SizedBox(width: 85, child: pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: '患者ID: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                            pw.TextSpan(text: _pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text, style: const pw.TextStyle(fontSize: 9)),
-                          ]))),
-                          // 氏名 (幅130)
-                          pw.SizedBox(width: 130, child: pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: '氏名: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                            pw.TextSpan(text: '${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様', style: const pw.TextStyle(fontSize: 9)),
-                          ]))),
-                          // 年齢 (幅45)
-                          pw.SizedBox(width: 45, child: pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: '年齢: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                            pw.TextSpan(text: '${_pAgeCtrl.text}歳', style: const pw.TextStyle(fontSize: 9)),
-                          ]))),
-                          // 性別 (幅45)
-                          pw.SizedBox(width: 45, child: pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: '性別: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                            pw.TextSpan(text: _pGender, style: const pw.TextStyle(fontSize: 9)),
-                          ]))),
-                          // 身長 (幅60)
-                          pw.SizedBox(width: 60, child: pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: '身長: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                            pw.TextSpan(text: '${_pHeightCtrl.text}cm', style: const pw.TextStyle(fontSize: 9)),
-                          ]))),
-                          // 体重 (幅60)
-                          pw.SizedBox(width: 60, child: pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: '体重: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                            pw.TextSpan(text: '${_pWeightCtrl.text}kg', style: const pw.TextStyle(fontSize: 9)),
-                          ]))),
-                          // BMI
-                          pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: 'BMI: ', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal900)),
-                            pw.TextSpan(text: bmiString, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
-                          ])),
+                          // ID: 12桁程度を想定
+                          pw.Container(width: 85, child: pw.Text('患者ID: ${_pIdCtrl.text.isEmpty ? "未入力" : _pIdCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+                          // 氏名: 全角10文字程度を想定
+                          pw.Container(width: 125, child: pw.Text('氏名: ${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} 様', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+
+                          // 以下の項目は必要分だけ幅をとる
+                          pw.SizedBox(width: 40, child: pw.Text('年齢: ${_pAgeCtrl.text}歳', style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 35, child: pw.Text('性別: ${_pGender}', style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 55, child: pw.Text('身長: ${_pHeightCtrl.text}cm', style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 55, child: pw.Text('体重: ${_pWeightCtrl.text}kg', style: const pw.TextStyle(fontSize: 9))),
+                          pw.Text('BMI: $bmiString', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.teal900)),
                         ],
                       ),
                       pw.SizedBox(height: 4),
                       pw.Divider(thickness: 0.3, color: PdfColors.grey300),
                       pw.SizedBox(height: 4),
 
+                      // 👇 【ここから変更：手術情報を上下2段に分割】
                       // ✨ 【2段目】病名
                       pw.Row(
                         children: [
@@ -343,12 +320,15 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             child: pw.FittedBox(
                               fit: pw.BoxFit.scaleDown,
                               alignment: pw.Alignment.centerLeft,
-                              child: pw.Text(_pDiseaseCtrl.text, style: const pw.TextStyle(fontSize: 9)),
+                              child: pw.Text(
+                                _pDiseaseCtrl.text.isEmpty ? "未入力" : _pDiseaseCtrl.text,
+                                style: const pw.TextStyle(fontSize: 9),
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      pw.SizedBox(height: 3),
+                      pw.SizedBox(height: 3), // 行間の微調整
                       // ✨ 【3段目】術式
                       pw.Row(
                         children: [
@@ -357,33 +337,25 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             child: pw.FittedBox(
                               fit: pw.BoxFit.scaleDown,
                               alignment: pw.Alignment.centerLeft,
-                              child: pw.Text(_pOpeCtrl.text, style: const pw.TextStyle(fontSize: 9)),
+                              child: pw.Text(
+                                _pOpeCtrl.text.isEmpty ? "未入力" : _pOpeCtrl.text,
+                                style: const pw.TextStyle(fontSize: 9),
+                              ),
                             ),
                           ),
                         ],
                       ),
+                      // 👆 【ここまで変更】
                       pw.SizedBox(height: 4),
                       pw.Divider(thickness: 0.3, color: PdfColors.grey300),
                       pw.SizedBox(height: 4),
 
-                      // ✨ 【4段目】管理情報（ラベル削除・フォント打ち分け版）
+                      // ✨ 【4段目】管理情報（ラベル削除版）
                       pw.Row(
                         children: [
-                          // 担当医
-                          pw.SizedBox(width: 160, child: pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: '麻酔担当医: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                            pw.TextSpan(text: _anesthetistCtrl.text, style: const pw.TextStyle(fontSize: 9)),
-                          ]))),
-                          // 手術時間
-                          pw.SizedBox(width: 100, child: pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: '手術時間: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                            pw.TextSpan(text: _calculateTotalMinutes(_opStartTime, _opEndTime), style: const pw.TextStyle(fontSize: 9)),
-                          ]))),
-                          // 麻酔時間
-                          pw.SizedBox(width: 100, child: pw.RichText(text: pw.TextSpan(children: [
-                            pw.TextSpan(text: '麻酔時間: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                            pw.TextSpan(text: _calculateTotalMinutes(_anesthesiaStartTime, _anesthesiaEndTime), style: const pw.TextStyle(fontSize: 9)),
-                          ]))),
+                          pw.Container(width: 150, child: pw.Text('麻酔担当医: ${_anesthetistCtrl.text}', style: pw.TextStyle(font: fontBold, fontSize: 9))),
+                          pw.Container(width: 100, child: pw.Text('手術時間: ${_calculateTotalMinutes(_opStartTime, _opEndTime)}', style: const pw.TextStyle(fontSize: 9))),
+                          pw.Container(width: 100, child: pw.Text('麻酔時間: ${_calculateTotalMinutes(_anesthesiaStartTime, _anesthesiaEndTime)}', style: const pw.TextStyle(fontSize: 9))),
                         ],
                       ),
                     ],
@@ -392,52 +364,22 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
                 // =========================================================================
                 // 【下部レイアウト】差し替えエリア
-                // 💡 左側にトレンド画像、右側にイベント・処置ログを配置します
+                // 💡 複雑な手書きロジックを廃止し、画面から直接撮影した「本物のデータ画像」を綺麗にハメ込みます！
                 // =========================================================================
                 pw.SizedBox(height: 10),
                 pw.Expanded(
                   child: capturedImageBytes == null
                       ? pw.Center(child: pw.Text('データの取得に失敗しました', style: pw.TextStyle(font: fontRegular, fontSize: 11)))
-                      : pw.Row( // 👈 ここをRowに変更して左右に分割します
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      // --- 左側：トレンドキャプチャ画像 (全体の7割) ---
-                      pw.Expanded(
-                        flex: 7,
-                        child: pw.Container(
-                          decoration: pw.BoxDecoration(
-                            border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                          ),
-                          child: pw.Image(
-                            pw.MemoryImage(capturedImageBytes),
-                            fit: pw.BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                      pw.SizedBox(width: 10), // 左右の隙間
-
-                      // --- 右側：【イベント・処置・メモ】のテキスト表示 (全体の3割) ---
-                      pw.Expanded(
-                        flex: 3,
-                        child: pw.Container(
-                          padding: const pw.EdgeInsets.all(5),
-                          decoration: pw.BoxDecoration(
-                            border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                          ),
-                          child: pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: [
-                              pw.Text('【イベント・処置・メモ】', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                              pw.Divider(thickness: 0.5),
-                              // 💡 ここにログのテキストを抽出して表示するロジックを次に追加します
-                              ..._buildPdfEventLogs(fontRegular),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                      : pw.Container(
+                    width: double.infinity,
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                    ),
+                    child: pw.Image(
+                      pw.MemoryImage(capturedImageBytes),
+                      fit: pw.BoxFit.contain, // 縦横比を維持して、印刷可能エリアにジャストフィットさせる
+                    ),
                   ),
                 ),
 
@@ -466,57 +408,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
       print('--- 【ログ】横向き3段PDF生成エラー: $e ---');
     }
   }
-  // 👇 ここから追加（PDF用のイベントログを作成する道具）
-  List<pw.Widget> _buildPdfEventLogs(pw.Font font) {
-    List<_PdfLogItem> allLogs = [];
-
-    // 1. イベント（入室、麻酔開始など）を収集
-    for (var e in _events) {
-      if (e.time != null) {
-        allLogs.add(_PdfLogItem(
-          time: e.time!,
-          category: 'Event',
-          content: '(${e.symbol}) ${e.name}',
-          color: PdfColors.black,
-        ));
-      }
-    }
-
-    // 2. ルート確保（PV）を収集
-    for (var iv in _ivRecords) {
-      allLogs.add(_PdfLogItem(
-        time: iv.time,
-        category: 'IV',
-        content: 'PV ${iv.gauge}/${iv.site} -> ${iv.isSuccess ? "成功" : "失敗"}',
-        color: PdfColors.black,
-      ));
-    }
-
-    // 3. 処置メモ（No.1: ○○ など）を収集
-    for (var rm in _remarkLogs) {
-      allLogs.add(_PdfLogItem(
-        time: rm.time,
-        category: 'Remark',
-        content: 'No.${rm.number}: ${rm.text}',
-        color: PdfColors.black,
-      ));
-    }
-
-    // 💡 全てのログを時間順（古い順）に並べ替える
-    allLogs.sort((a, b) => a.time.compareTo(b.time));
-
-    // 💡 PDF用のテキストウィジェットのリストに変換
-    return allLogs.map((log) {
-      return pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 1),
-        child: pw.Text(
-          '[${DateFormat('HH:mm').format(log.time)}] ${log.content}',
-          style: pw.TextStyle(font: font, fontSize: 8),
-        ),
-      );
-    }).toList();
-  }
-  // 👆 ここまで追加
 // 💡 選択されたタイムライン幅（30分など）に合わせて、5分刻みの目盛りリストを作ります
   List<double> _buildXAxisTicks() {
     final List<double> ticks = [];
