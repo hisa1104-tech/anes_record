@@ -277,7 +277,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
     AnesthesiaEvent(
       id: 'anes_start',
       name: '麻酔開始',
-      symbol: '×', //普通のバツに変更した
+      symbol: '✕',
       activeColor: Colors.orange.shade800,
     ),
     AnesthesiaEvent(
@@ -301,7 +301,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
     AnesthesiaEvent(
       id: 'anes_end',
       name: '麻酔終了',
-      symbol: '×', //普通のバツに変更した
+      symbol: '✕',
       activeColor: Colors.orange.shade500,
     ),
     AnesthesiaEvent(
@@ -537,7 +537,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           ),
                           // 性別 (幅45)
                           pw.SizedBox(
-                            width: 45,
+                            width: 60,
                             child: pw.RichText(
                               text: pw.TextSpan(
                                 children: [
@@ -2627,7 +2627,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   fontSize: 10.5,
                                                 ),
                                               ),
-                                              Text('1h', style: TextStyle(fontSize: 10.5,
+                                              Text(
+                                                '1h',
+                                                style: TextStyle(
+                                                  fontSize: 10.5,
                                                 ),
                                               ),
                                               Text(
