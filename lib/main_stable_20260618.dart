@@ -245,7 +245,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   Future<void> _generatePdf() async {
     try {
-      print('--- 【ログ】A4縦向き・3段コンパクトPDF生成スタート ---');
+      print('--- 【ログ】A4横向き・3段コンパクトPDF生成スタート ---');
 
       // 💡 1. 描画の確定を少し待ってから、画面から「グラフ＋タイムライン＋ログ」をパシャッと撮影
       await Future.delayed(const Duration(milliseconds: 200));
@@ -258,7 +258,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
       pdf.addPage(
         pw.Page(
-          pageFormat: PdfPageFormat.a4,// 👈 .landscape を削って「縦向き」に固定
+          pageFormat: PdfPageFormat.a4.landscape,
           margin: const pw.EdgeInsets.all(25),
           theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           build: (pw.Context context) {
