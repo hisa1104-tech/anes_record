@@ -766,36 +766,36 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             // --- 左側：トレンドキャプチャ画像 (全体の7割) ---
                             pw.Expanded(
                               flex: 7,
-                              child: pw.Column(
-                                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                children: [
-                                  pw.Text(
-                                    '【トレンド】',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
-                                    ),
+                              child: pw.Container(
+                                padding: const pw.EdgeInsets.all(5), // 内側に少し余白を作る
+                                decoration: pw.BoxDecoration(
+                                  border: pw.Border.all(
+                                    color: PdfColors.grey300,
+                                    width: 0.5,
                                   ),
-                                  pw.SizedBox(height: 5), // 見出しと画像の間のすきま
-                                  pw.Expanded(
-                                    child: pw.Container(
-                                      width: double.infinity,
-                                      decoration: pw.BoxDecoration(
-                                        border: pw.Border.all(
-                                          color: PdfColors.grey300,
-                                          width: 0.5,
-                                        ),
-                                        borderRadius: const pw.BorderRadius.all(
-                                          pw.Radius.circular(4),
-                                        ),
+                                  borderRadius: const pw.BorderRadius.all(
+                                    pw.Radius.circular(4),
+                                  ),
+                                ),
+                                child: pw.Column(
+                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                  children: [
+                                    pw.Text(
+                                      '【トレンド】',
+                                      style: pw.TextStyle(
+                                        font: fontBold,
+                                        fontSize: 9,
                                       ),
+                                    ),
+                                    pw.SizedBox(height: 5), // 見出しと画像の間のすきま
+                                    pw.Expanded(
                                       child: pw.Image(
                                         pw.MemoryImage(capturedImageBytes),
                                         fit: pw.BoxFit.contain,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                             pw.SizedBox(width: 10), // 左右の隙間
