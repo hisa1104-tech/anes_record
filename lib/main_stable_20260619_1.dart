@@ -383,48 +383,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
   DateTime? _opStartTime;
   DateTime? _opEndTime;
 
-  // 🌟 自由入力用のポップアップダイアログ
-  void _showCustomFluidDialog() {
-    final TextEditingController customCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('新しい輸液の入力', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          content: TextField(
-            controller: customCtrl,
-            autofocus: true,
-            decoration: const InputDecoration(
-              hintText: '例: マクトミン',
-              hintStyle: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            style: const TextStyle(fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('キャンセル', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (customCtrl.text.trim().isNotEmpty) {
-                  setState(() {
-                    // 🌟 入力された文字列をそのまま現在の選択中の輸液名にする
-                    _selectedFluidType = customCtrl.text.trim();
-                  });
-                }
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-              child: const Text('確定', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   final GlobalKey _chartCaptureKey = GlobalKey();
 
   Future<Uint8List?> _captureChartImage(BuildContext context) async {
@@ -936,7 +894,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
         _PdfLogItem(
           time: iv.time,
           category: 'IV',
-          content: 'PV ${iv.gauge}/${iv.site} ',
+          content: 'PV ${iv.gauge}/${iv.site} -> ${iv.isSuccess ? "成功" : "失敗"}',
           color: PdfColors.black,
         ),
       );
@@ -3814,37 +3772,34 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                     const SizedBox(width: 4),
                                                     Expanded(
                                                       child: DropdownButton<String>(
-                                                        value: _selectedFluidType,
+                                                        value:
+                                                            _selectedFluidType,
                                                         isDense: true,
                                                         isExpanded: true,
                                                         style: const TextStyle(
                                                           fontSize: 10.5,
                                                           color: Colors.black,
-                                                          fontWeight: FontWeight.bold,
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                         ),
-                                                        items: [
-                                                          'フィジオ140',
-                                                          '酢酸リンゲル',
-                                                          'ソルデム3A',
-                                                          '生理食塩水',
-                                                          '5%ブドウ糖',
-                                                          // 🌟 現在の選択肢にないカスタム輸液が選ばれている場合もドロップダウンに表示できるようにする
-                                                          if (!['フィジオ140', '酢酸リンゲル', 'ソルデム3A', '生理食塩水', '5%ブドウ糖'].contains(_selectedFluidType))
-                                                            _selectedFluidType,
-                                                          '自由入力...', // 🌟 自由入力のトリガーを追加
-                                                        ].map((v) => DropdownMenuItem(
-                                                          value: v,
-                                                          child: Text(v, style: TextStyle(color: v == '自由入力...' ? Colors.blue.shade700 : Colors.black)),
-                                                        ))
-                                                            .toList(),
-                                                        onChanged: (v) {
-                                                          if (v == '自由入力...') {
-                                                            // 🌟「自由入力...」がタップされたらポップアップを開く
-                                                            _showCustomFluidDialog();
-                                                          } else {
-                                                            setState(() => _selectedFluidType = v!);
-                                                          }
-                                                        },
+                                                        items:
+                                                            ['フィジオ140', '酢酸リンゲル', 'ソルデム3A', '生理食塩水', '5%ブドウ糖',]
+                                                                .map(
+                                                                  (
+                                                                    v,
+                                                                  ) => DropdownMenuItem(
+                                                                    value: v,
+                                                                    child: Text(
+                                                                      v,
+                                                                    ),
+                                                                  ),
+                                                                )
+                                                                .toList(),
+                                                        onChanged: (v) => setState(
+                                                          () =>
+                                                              _selectedFluidType =
+                                                                  v!,
+                                                        ),
                                                       ),
                                                     ),
                                                   ],
