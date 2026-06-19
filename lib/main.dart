@@ -229,12 +229,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
     'O2': [],
     'N2O': [],
     'PropofolInf': [],
+    'Dex': [], // 👈 追加
   };
   final List<BolusLog> _bolusLogs = [];
 
   bool _showN2oRow = false;
   bool _showAcerioRow = false;
   bool _showRopionRow = false;
+  bool _showDexRow = false; // 👈 追加
   bool _isPrinting = false; // 👈 追加：PDF出力中ならtrueにするフラグ
   bool _hideEmptyTimelineRows = false; // 🌟 ここを追加！：未入力の行を隠すかどうかのフラグ
 
@@ -249,9 +251,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   final TextEditingController _o2Controller = TextEditingController();
   final TextEditingController _n2oController = TextEditingController();
+  final TextEditingController _dexController = TextEditingController(); // 👈 追加
   final TextEditingController _propofolInfController = TextEditingController();
 
   String _propofolInfUnit = 'mg/kg/h';
+  String _dexUnit = 'μg/kg/h'; // 👈 追加
   String _selectedLaDrug = 'オーラ注';
 
   final TextEditingController _propofolBolusController =
@@ -1103,6 +1107,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
     setState(() {
       _initStartTimeIfNeeded();
       if (key == 'N2O') _showN2oRow = true;
+      if (key == 'Dex') _showDexRow = true; // 👈 追加
       _infusionMap[key]!.add(
         InfusionPoint(
           id: DateTime.now().toString(),
@@ -1118,6 +1123,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
     setState(() {
       _initStartTimeIfNeeded();
       if (key == 'N2O') _showN2oRow = true;
+      if (key == 'Dex') _showDexRow = true; // 👈 追加
       _infusionMap[key]!.add(
         InfusionPoint(
           id: DateTime.now().toString(),
@@ -2914,6 +2920,13 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                                 0.01,
                                                               ),
                                                         ),
+                                                      if (_showDexRow) // 👈 追加
+                                                        _buildTimelineRow(
+                                                          label: 'Dex [$_dexUnit]',
+                                                          maxMinutes: maxX,
+                                                          children: _getInfusionGraphics('Dex', maxX, chartW, Colors.orange),
+                                                          bgColor: Colors.orange.withOpacity(0.01),
+                                                        ),
                                                       _buildTimelineRow(
                                                         label:
                                                             'Propofol civ [$_propofolInfUnit]',
@@ -3306,9 +3319,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 String displayName = entry.key;
 
                                                 if (entry.key ==
-                                                    "PropofolInf") {
-                                                  displayName = "Propofol civ";
-                                                  unit = _propofolInfUnit;
+                                                    "PropofolInf") {displayName = "Propofol civ";
+                                                unit = _propofolInfUnit;
+                                                } else if (entry.key == "Dex") { // 👈 追加
+                                                  displayName = "Dex";
+                                                  unit = _dexUnit;
                                                 } else if (entry.key == "O2" ||
                                                     entry.key == "N2O") {
                                                   unit = "L/min";
@@ -4264,7 +4279,72 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           ],
                                         ),
                                       ),
-
+                                      // 🌟 Dexmedetomidineの行（プルダウン付き）
+                                      _alignedDrugRow(
+                                        label: 'Dex:',
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 3,
+                                              child: TextField(
+                                                controller: _dexController,
+                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                style: const TextStyle(fontSize: 11),
+                                                decoration: const InputDecoration(
+                                                  hintText: '速度',
+                                                  contentPadding: EdgeInsets.symmetric(horizontal: 4),
+                                                  border: OutlineInputBorder(),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 2),
+                                            DropdownButton<String>(
+                                              value: _dexUnit,
+                                              isDense: true,
+                                              items: ['μg/kg/h', 'mL/h']
+                                                  .map((u) => DropdownMenuItem(
+                                                  value: u,
+                                                  child: Text(u, style: const TextStyle(fontSize: 9))))
+                                                  .toList(),
+                                              onChanged: (v) => setState(() => _dexUnit = v!),
+                                            ),
+                                          ],
+                                        ),
+                                        suffix: Row(
+                                          children: [
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: () {
+                                                  if (_dexController.text.isEmpty) return;
+                                                  _addInfusionPoint('Dex', _dexController.text);
+                                                  _dexController.clear();
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.orange,
+                                                  foregroundColor: Colors.white,
+                                                  padding: EdgeInsets.zero,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                                ),
+                                                child: const Text('投与', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 2),
+                                            SizedBox(
+                                              width: 32,
+                                              child: ElevatedButton(
+                                                onPressed: () => _stopInfusionPoint('Dex'),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.grey,
+                                                  foregroundColor: Colors.white,
+                                                  padding: EdgeInsets.zero,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                                ),
+                                                child: const Text('OFF', style: TextStyle(fontSize: 9)),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                       _alignedDrugRow(
                                         label: 'Propofol civ :',
                                         child: Row(
