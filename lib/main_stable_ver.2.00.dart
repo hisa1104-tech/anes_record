@@ -4900,35 +4900,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           ),
                                         ),
                                       ),
-                                      // 🌟 【ここから追加】輸液の追加ボタンのすぐ下に入る「再表示」ボタン
-                                      const SizedBox(height: 6), // 輸液の行とのちょうどいい隙間
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: 20, // よりコンパクトに馴染むサイズに変更
-                                        child: OutlinedButton.icon(
-                                          onPressed: () {
-                                            setState(() {
-                                              _hiddenRowKeys.clear(); // 非表示リストをクリアして一発復活
-                                            });
-                                          },
-                                          icon: Icon(Icons.refresh, size: 13, color: Colors.teal.shade700),
-                                          label: Text(
-                                            '非表示にした行をすべて再表示',
-                                            style: TextStyle(
-                                              fontSize: 10.5,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.teal.shade800,
-                                            ),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            side: BorderSide(color: Colors.teal.shade300, width: 0.8),
-                                            backgroundColor: Colors.teal.shade50.withOpacity(0.4),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(4), // 周りの入力欄の角丸の雰囲気に同期
-                                            ),
-                                          ),
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
