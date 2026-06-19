@@ -1590,7 +1590,46 @@ class _MainRecordPageState extends State<MainRecordPage> {
     );
   }
 
-
+// 🌟 PDF出力前の最終確認ポップアップ
+  void _confirmPdfGenerationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+              SizedBox(width: 6),
+              Text('PDF出力の確認', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: const Text(
+            'トレンドおよびタイムラインはアプリ上の表示がそのままキャプチャされます。\n\n'
+                '時間スケールの調整および未入力薬剤行の削除（ラベルをタップ）はお済みですか？\n\n'
+                'PDF出力してよろしいですか？',
+            style: TextStyle(fontSize: 11, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('キャンセル', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // ダイアログを閉じる
+                _generatePdf(); // 実際のPDF生成処理を実行
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal.shade600,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: const Text('出力する', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
   /*List<Widget> _getVitalPins(double maxMinutes, double width) {
     if (_startTime == null || maxMinutes <= 0) return [];
     return _records.map((r) {
@@ -2710,7 +2749,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           SizedBox(
                             height: 24, // 👈 縦幅を24px（小さめ）にカチッと固定します
                             child: ElevatedButton.icon(
-                              onPressed: _generatePdf,
+                              onPressed: _confirmPdfGenerationDialog, // 🌟 ここを _generatePdf から変更！
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.teal.shade600,
                                 foregroundColor: Colors.white,
