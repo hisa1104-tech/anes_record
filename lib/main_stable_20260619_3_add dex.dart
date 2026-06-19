@@ -955,8 +955,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                     pw.Divider(thickness: 0.5),
                                     // 💡 ここにログのテキストを抽出して表示するロジックを次に追加します
                                     ..._buildPdfEventLogs(fontRegular),
-                                    // 🌟 ここを追加：薬剤の合計も表示する
-                                    ..._buildPdfDrugSummary(fontBold, fontRegular),
                                   ],
                                 ),
                               ),
@@ -1058,34 +1056,6 @@ class _MainRecordPageState extends State<MainRecordPage> {
   }
 
   // 👆 ここまで追加
-  // 🌟 追加：薬剤の合計投与量を計算してPDF用の表にする
-  List<pw.Widget> _buildPdfDrugSummary(pw.Font fontBold, pw.Font fontRegular) {
-    // 薬剤名をキーにして合計量を貯める箱
-    Map<String, double> totals = {};
-    Map<String, String> units = {};
-
-    for (var b in _bolusLogs) {
-      // 局所麻酔(LA)と輸液以外を集計対象にする（輸液は別枠が多いため）
-      if (b.drugName == 'LA' || ['フィジオ140', 'ラクテック注', 'ソルデム3A', '生理食塩水', 'ソリタT1', 'ソリタT3'].contains(b.drugName)) continue;
-
-      double amount = double.tryParse(b.amount) ?? 0;
-      totals[b.drugName] = (totals[b.drugName] ?? 0) + amount;
-      units[b.drugName] = b.unit;
-    }
-
-    if (totals.isEmpty) return [];
-
-    return [
-      pw.SizedBox(height: 10),
-      pw.Text('【薬剤合計投与量（iv）】', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-      pw.Divider(thickness: 0.5),
-      ...totals.entries.map((e) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 1),
-        child: pw.Text('${e.key}: ${e.value.toStringAsFixed(1)} ${units[e.key]}', style: pw.TextStyle(font: fontRegular, fontSize: 8)),
-      )),
-    ];
-  }
-
   // 💡 選択されたタイムライン幅（30分など）に合わせて、5分刻みの目盛りリストを作ります
   List<double> _buildXAxisTicks() {
     final List<double> ticks = [];
