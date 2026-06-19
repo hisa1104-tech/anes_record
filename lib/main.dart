@@ -238,7 +238,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
   bool _showRopionRow = false;
   bool _showDexRow = false; // 👈 追加
   bool _isPrinting = false; // 👈 追加：PDF出力中ならtrueにするフラグ
-  bool _hideEmptyTimelineRows = false; // 🌟 ここを追加！：未入力の行を隠すかどうかのフラグ
+
+  // 🌟 追加：非表示にした行の名前を保存する場所
+  final Set<String> _hiddenRowKeys = {};
+  // 🌟 追加：手動で非表示にした行を保存するセット
+  final Set<String> _manuallyHiddenRows = {};
 
   // === 💡 ここから輸液機能のために新しく追記 ===
   String _selectedFluidType = 'フィジオ140'; // プルダウンで今選ばれている輸液名を記憶する変数
@@ -1520,33 +1524,34 @@ class _MainRecordPageState extends State<MainRecordPage> {
   // 💡 始点を揃えるため、ラベル幅を110pxに、グリッド右端のマージンを15pxに設定（チャート側と完全に一致）
   Widget _buildTimelineRow({
     required String label,
+    required String rowKey, // 🌟 追加：どの行か特定するための名前
     required double maxMinutes,
     required List<Widget> children,
     Color? bgColor,
     double height = 25,
   }) {
-    // 💡 heightを 21 ➔ 25 に拡大(4pxプラス)
     return Container(
       height: height,
-      margin: const EdgeInsets.symmetric(vertical: 0.8), // 💡 行間もわずかに調整
+      margin: const EdgeInsets.symmetric(vertical: 0.8),
       child: Row(
         children: [
-          Container(
-            width: 122, // 💡 110px + Y軸ラベルの32px分を足して、グラフのグリッド始点と完全同期
-            padding: const EdgeInsets.only(left: 4),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.bold,
+          // 🌟 ラベル部分をタップ可能に変更
+          InkWell(
+            onTap: () => _confirmHideRow(label, rowKey),
+            child: Container(
+              width: 122,
+              padding: const EdgeInsets.only(left: 4),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
               ),
-              overflow: TextOverflow.ellipsis,
-            ), // 💡 文字を 9.0 ➔ 10.5 に拡大
+            ),
           ),
           Expanded(
             child: Container(
-              margin: const EdgeInsets.only(right: 15), // 💡 グラフの右側余白と完全同期
+              margin: const EdgeInsets.only(right: 15),
               decoration: BoxDecoration(
                 color: bgColor ?? Colors.white,
                 border: Border.all(color: Colors.grey.shade200),
@@ -1554,18 +1559,37 @@ class _MainRecordPageState extends State<MainRecordPage> {
               ),
               child: Stack(
                 alignment: Alignment.centerLeft,
-                // 💡 これにより、中のテキスト表示が上下中央に揃います
-                children: [
-                  //Positioned(left: 0, right: 0, top: height / 2 - 0.5, child: Container(height: 1, color: Colors.grey.withOpacity(0.04))),
-                  ...children,
-                ],
-              ), // 💡 背景の線を消して、プロットされたピン（数字など）だけを描画するようにしました
+                children: [...children],
+              ),
             ),
           ),
         ],
       ),
     );
   }
+
+  // 🌟 追加：削除確認ポップアップを出す命令
+  void _confirmHideRow(String label, String rowKey) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('行の非表示', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        content: Text('タイムラインから「$label」の行を一時的に消しますか？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
+          ElevatedButton(
+            onPressed: () {
+              setState(() => _hiddenRowKeys.add(rowKey)); // 非表示リストに追加
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('非表示にする'),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   /*List<Widget> _getVitalPins(double maxMinutes, double width) {
     if (_startTime == null || maxMinutes <= 0) return [];
@@ -2901,212 +2925,130 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                     physics:
                                                         const ClampingScrollPhysics(),
                                                     children: [
+                                                      // 🌟 イベント行などは誤消去を防ぐため、rowKeyを渡さずタップ対象外（または消したいなら他と同様にifで囲む）にするのが安全です
                                                       _buildTimelineRow(
                                                         label: 'イベント',
+                                                        rowKey: 'event', // 👈 新しく追加した引数
                                                         maxMinutes: maxX,
-                                                        children: _getEventPins(
-                                                          maxX,
-                                                          chartW,
-                                                        ),
+                                                        children: _getEventPins(maxX, chartW),
                                                       ),
                                                       _buildTimelineRow(
                                                         label: '処置メモ/PV',
+                                                        rowKey: 'remark', // 👈 新しく追加した引数
                                                         maxMinutes: maxX,
-                                                        children:
-                                                            _getCombinedIvAndRemarkPins(
-                                                              maxX,
-                                                              chartW,
-                                                            ),
+                                                        children: _getCombinedIvAndRemarkPins(maxX, chartW),
                                                       ),
-                                                      _buildTimelineRow(
-                                                        label: 'O2 [L/min]',
-                                                        maxMinutes: maxX,
-                                                        children:
-                                                            _getInfusionGraphics(
-                                                              'O2',
-                                                              maxX,
-                                                              chartW,
-                                                              Colors.blue,
-                                                            ),
-                                                        bgColor: Colors.blue
-                                                            .withOpacity(0.01),
-                                                      ),
-                                                      if (_showN2oRow)
+
+                                                      // 🌟 ここから下の薬剤・輸液行を「if (!_hiddenRowKeys.contains('識別名'))」で囲んでいきます
+                                                      if (!_hiddenRowKeys.contains('O2'))
+                                                        _buildTimelineRow(
+                                                          label: 'O2 [L/min]',
+                                                          rowKey: 'O2',
+                                                          maxMinutes: maxX,
+                                                          children: _getInfusionGraphics('O2', maxX, chartW, Colors.blue),
+                                                          bgColor: Colors.blue.withOpacity(0.01),
+                                                        ),
+
+                                                      if (_showN2oRow && !_hiddenRowKeys.contains('N2O'))
                                                         _buildTimelineRow(
                                                           label: 'N2O [L/min]',
+                                                          rowKey: 'N2O',
                                                           maxMinutes: maxX,
-                                                          children:
-                                                              _getInfusionGraphics(
-                                                                'N2O',
-                                                                maxX,
-                                                                chartW,
-                                                                Colors
-                                                                    .lightBlue
-                                                                    .shade300,
-                                                              ),
-                                                          bgColor: Colors
-                                                              .lightBlue
-                                                              .withOpacity(
-                                                                0.01,
-                                                              ),
+                                                          children: _getInfusionGraphics('N2O', maxX, chartW, Colors.lightBlue.shade300),
+                                                          bgColor: Colors.lightBlue.withOpacity(0.01),
                                                         ),
-                                                      if (_showDexRow) // 👈 追加
+
+                                                      if (_showDexRow && !_hiddenRowKeys.contains('Dex'))
                                                         _buildTimelineRow(
                                                           label: 'Dex [$_dexUnit]',
+                                                          rowKey: 'Dex',
                                                           maxMinutes: maxX,
                                                           children: _getInfusionGraphics('Dex', maxX, chartW, Colors.orange),
                                                           bgColor: Colors.orange.withOpacity(0.01),
                                                         ),
-                                                      _buildTimelineRow(
-                                                        label:
-                                                            'Propofol civ [$_propofolInfUnit]',
-                                                        maxMinutes: maxX,
-                                                        children:
-                                                            _getInfusionGraphics(
-                                                              'PropofolInf',
-                                                              maxX,
-                                                              chartW,
-                                                              Colors.purple,
-                                                            ),
-                                                        bgColor: Colors.purple
-                                                            .withOpacity(0.01),
-                                                      ),
-                                                      _buildTimelineRow(
-                                                        label:
-                                                            'Propofol iv [mg]',
-                                                        maxMinutes: maxX,
-                                                        children: _getBolusPins(
-                                                          'Propofol',
-                                                          maxX,
-                                                          chartW,
-                                                          Colors
-                                                              .deepPurple
-                                                              .shade400,
+
+                                                      if (!_hiddenRowKeys.contains('PropofolCiv'))
+                                                        _buildTimelineRow(
+                                                          label: 'Propofol civ [$_propofolInfUnit]',
+                                                          rowKey: 'PropofolCiv',
+                                                          maxMinutes: maxX,
+                                                          children: _getInfusionGraphics('PropofolInf', maxX, chartW, Colors.purple),
+                                                          bgColor: Colors.purple.withOpacity(0.01),
                                                         ),
-                                                        bgColor: Colors.purple
-                                                            .withOpacity(0.01),
-                                                      ),
-                                                      _buildTimelineRow(
-                                                        label:
-                                                            'Midazolam iv [mg]',
-                                                        maxMinutes: maxX,
-                                                        children: _getBolusPins(
-                                                          'Midazolam',
-                                                          maxX,
-                                                          chartW,
-                                                          Colors.teal,
+
+                                                      if (!_hiddenRowKeys.contains('PropofolIv'))
+                                                        _buildTimelineRow(
+                                                          label: 'Propofol iv [mg]',
+                                                          rowKey: 'PropofolIv',
+                                                          maxMinutes: maxX,
+                                                          children: _getBolusPins('Propofol', maxX, chartW, Colors.deepPurple.shade400),
+                                                          bgColor: Colors.purple.withOpacity(0.01),
                                                         ),
-                                                        bgColor: Colors.teal
-                                                            .withOpacity(0.01),
-                                                      ),
-                                                      if (_showAcerioRow)
+
+                                                      if (!_hiddenRowKeys.contains('Midazolam'))
+                                                        _buildTimelineRow(
+                                                          label: 'Midazolam iv [mg]',
+                                                          rowKey: 'Midazolam',
+                                                          maxMinutes: maxX,
+                                                          children: _getBolusPins('Midazolam', maxX, chartW, Colors.teal),
+                                                          bgColor: Colors.teal.withOpacity(0.01),
+                                                        ),
+
+                                                      if (_showAcerioRow && !_hiddenRowKeys.contains('Acerio'))
                                                         _buildTimelineRow(
                                                           label: 'アセリオ [mg]',
+                                                          rowKey: 'Acerio',
                                                           maxMinutes: maxX,
-                                                          children:
-                                                              _getBolusPins(
-                                                                'アセリオ',
-                                                                maxX,
-                                                                chartW,
-                                                                Colors
-                                                                    .orange
-                                                                    .shade700,
-                                                              ),
-                                                          bgColor: Colors.orange
-                                                              .withOpacity(
-                                                                0.01,
-                                                              ),
+                                                          children: _getBolusPins('アセリオ', maxX, chartW, Colors.orange.shade700),
+                                                          bgColor: Colors.orange.withOpacity(0.01),
                                                         ),
-                                                      if (_showRopionRow)
+
+                                                      if (_showRopionRow && !_hiddenRowKeys.contains('Ropion'))
                                                         _buildTimelineRow(
                                                           label: 'ロピオン [mg]',
+                                                          rowKey: 'Ropion',
                                                           maxMinutes: maxX,
-                                                          children:
-                                                              _getBolusPins(
-                                                                'ロピオン',
-                                                                maxX,
-                                                                chartW,
-                                                                Colors.brown,
-                                                              ),
-                                                          bgColor: Colors.brown
-                                                              .withOpacity(
-                                                                0.01,
-                                                              ),
+                                                          children: _getBolusPins('ロピオン', maxX, chartW, Colors.brown),
+                                                          bgColor: Colors.brown.withOpacity(0.01),
                                                         ),
-                                                      _buildTimelineRow(
-                                                        label:
-                                                            '$_selectedLaDrug [mL]',
-                                                        maxMinutes: maxX,
-                                                        children: _getBolusPins(
-                                                          'LA',
-                                                          maxX,
-                                                          chartW,
-                                                          Colors
-                                                              .indigo
-                                                              .shade800,
+
+                                                      if (!_hiddenRowKeys.contains('LA'))
+                                                        _buildTimelineRow(
+                                                          label: '$_selectedLaDrug [mL]',
+                                                          rowKey: 'LA',
+                                                          maxMinutes: maxX,
+                                                          children: _getBolusPins('LA', maxX, chartW, Colors.indigo.shade800),
+                                                          bgColor: Colors.indigo.withOpacity(0.01),
                                                         ),
-                                                        bgColor: Colors.indigo
-                                                            .withOpacity(0.01),
-                                                      ),
+
+                                                      // カスタム追加された薬剤たちのループ
                                                       ...customDrugNames
-                                                          .where(
-                                                            (name) =>
-                                                                name !=
-                                                                _selectedFluidType,
-                                                          )
+                                                          .where((name) => name != _selectedFluidType && !_hiddenRowKeys.contains('custom_$name')) // 🌟 ループ内でも除外条件を追加
                                                           .map((drugName) {
-                                                            String customUnit =
-                                                                'mg';
-                                                            if (drugName ==
-                                                                _customDrugNameController
-                                                                    .text
-                                                                    .trim()) {
-                                                              customUnit =
-                                                                  _selectedCustomUnit;
-                                                            } else {
-                                                              try {
-                                                                customUnit = _bolusLogs
-                                                                    .firstWhere(
-                                                                      (b) =>
-                                                                          b.drugName ==
-                                                                          drugName,
-                                                                    )
-                                                                    .unit;
-                                                              } catch (_) {}
-                                                            }
-                                                            return _buildTimelineRow(
-                                                              label:
-                                                                  '$drugName [$customUnit]',
-                                                              maxMinutes: maxX,
-                                                              children:
-                                                                  _getDynamicCustomBolusPins(
-                                                                    drugName,
-                                                                    maxX,
-                                                                    chartW,
-                                                                    Colors
-                                                                        .grey
-                                                                        .shade800,
-                                                                  ),
-                                                              bgColor: Colors
-                                                                  .grey
-                                                                  .shade100,
-                                                            );
-                                                          }),
-                                                      _buildTimelineRow(
-                                                        label:
-                                                            '$_selectedFluidType [mL]',
-                                                        maxMinutes: maxX,
-                                                        children: _getBolusPins(
-                                                          _selectedFluidType,
-                                                          maxX,
-                                                          chartW,
-                                                          Colors.teal.shade700,
+                                                        String customUnit = 'mg';
+                                                        if (drugName == _customDrugNameController.text.trim()) {
+                                                          customUnit = _selectedCustomUnit;
+                                                        } else {
+                                                          try { customUnit = _bolusLogs.firstWhere((b) => b.drugName == drugName).unit; } catch (_) {}
+                                                        }
+                                                        return _buildTimelineRow(
+                                                          label: '$drugName [$customUnit]',
+                                                          rowKey: 'custom_$drugName', // 🌟 動的なキーを割り振る
+                                                          maxMinutes: maxX,
+                                                          children: _getDynamicCustomBolusPins(drugName, maxX, chartW, Colors.grey.shade800),
+                                                          bgColor: Colors.grey.shade100,
+                                                        );
+                                                      }),
+
+                                                      if (!_hiddenRowKeys.contains('Fluid'))
+                                                        _buildTimelineRow(
+                                                          label: '$_selectedFluidType [mL]',
+                                                          rowKey: 'Fluid',
+                                                          maxMinutes: maxX,
+                                                          children: _getBolusPins(_selectedFluidType, maxX, chartW, Colors.teal.shade700),
+                                                          bgColor: Colors.teal.withOpacity(0.02),
                                                         ),
-                                                        bgColor: Colors.teal
-                                                            .withOpacity(0.02),
-                                                      ),
-                                                      // 👈 ここに ), が必要
-                                                    ], // ListView の終わり
+                                                    ],// ListView の終わり
                                                   ),
                                                 ),
                                               ], // Column (グラフ+タイムライン) の終わり
