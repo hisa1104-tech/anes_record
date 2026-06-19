@@ -1537,7 +1537,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
         children: [
           // 🌟 ラベル部分をタップ可能に変更
           InkWell(
-            onTap: () => _confirmHideRow(label, rowKey),
+            // 🌟【ここを追加】イベント、処置メモ、輸液のキーだったらタップ処理を無効にするガード
+            onTap: (rowKey == 'event' || rowKey == 'remark' || rowKey == 'Fluid' || rowKey == '')
+                ? null // nullを渡すことで、InkWellのタップエフェクト（波紋）も消えて完全に反応しなくなります
+                : () => _confirmHideRow(label, rowKey),
             child: Container(
               width: 122,
               padding: const EdgeInsets.only(left: 4),
