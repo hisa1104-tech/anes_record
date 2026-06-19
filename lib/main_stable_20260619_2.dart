@@ -506,7 +506,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
       },
     );
   }
-
+  
   final GlobalKey _chartCaptureKey = GlobalKey();
 
   Future<Uint8List?> _captureChartImage(BuildContext context) async {
