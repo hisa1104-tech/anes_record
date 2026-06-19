@@ -1594,7 +1594,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
   void _confirmPdfGenerationDialog() {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Row(
             children: [
@@ -1611,13 +1611,18 @@ class _MainRecordPageState extends State<MainRecordPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('キャンセル', style: TextStyle(color: Colors.grey, fontSize: 12)),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context); // ダイアログを閉じる
-                _generatePdf(); // 実際のPDF生成処理を実行
+              onPressed: () async {
+                // 🌟 1. まず先にダイアログを確実に閉じます
+                Navigator.pop(dialogContext);
+
+                // 🌟 2. ダイアログが消えるのを一瞬（100ミリ秒）待ってからPDFを生成します
+                // これにより、contextが元のアプリ画面を正しく指すようになり、キャプチャが復活します！
+                await Future.delayed(const Duration(milliseconds: 100));
+                _generatePdf();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal.shade600,
