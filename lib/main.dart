@@ -574,7 +574,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
       pdf.addPage(
         pw.Page(
-          pageFormat: PdfPageFormat.a4, // 👈 .landscape を削って「縦向き」に固定
+          pageFormat: PdfPageFormat.a4, // 「縦向き」に固定
           margin: const pw.EdgeInsets.all(25),
           theme: pw.ThemeData.withFont(base: fontRegular, bold: fontBold),
           build: (pw.Context context) {
@@ -582,7 +582,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 // =========================================================================
-                // タイトルヘッダー（★しっかり残しています）
+                // タイトルヘッダー
                 // =========================================================================
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -625,73 +625,67 @@ class _MainRecordPageState extends State<MainRecordPage> {
                   ),
                   child: pw.Column(
                     children: [
-                      // ✨ 【1段目】患者情報（ラベル削除・フォント打ち分け版）
+                      // ✨ 【1段目】患者情報（すべて未入力時は手書き用の下線表示に対応）
                       pw.Row(
                         children: [
-                          // 患者ID (幅85)
+                          // 患者ID (幅90)
                           pw.SizedBox(
                             width: 90,
-                            child: pw.RichText(
-                              text: pw.TextSpan(
-                                children: [
-                                  pw.TextSpan(
-                                    text: '患者ID: ',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
+                            child: pw.Row(
+                              mainAxisSize: pw.MainAxisSize.min,
+                              children: [
+                                pw.Text('患者ID: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                pw.Expanded(
+                                  child: _pIdCtrl.text.isEmpty
+                                      ? pw.Container(
+                                    margin: const pw.EdgeInsets.only(top: 6, right: 5),
+                                    decoration: pw.BoxDecoration(
+                                      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
-                                  ),
-                                  pw.TextSpan(
-                                    text: _pIdCtrl.text.isEmpty
-                                        ? "未入力"
-                                        : _pIdCtrl.text,
-                                    style: const pw.TextStyle(fontSize: 9),
-                                  ),
-                                ],
-                              ),
+                                  )
+                                      : pw.Text(_pIdCtrl.text, style: const pw.TextStyle(fontSize: 9)),
+                                ),
+                              ],
                             ),
                           ),
                           // 氏名 (幅130)
                           pw.SizedBox(
                             width: 130,
-                            child: pw.RichText(
-                              text: pw.TextSpan(
-                                children: [
-                                  pw.TextSpan(
-                                    text: '氏名: ',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
+                            child: pw.Row(
+                              mainAxisSize: pw.MainAxisSize.min,
+                              children: [
+                                pw.Text('氏名: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                pw.Expanded(
+                                  child: _pNameCtrl.text.isEmpty
+                                      ? pw.Container(
+                                    margin: const pw.EdgeInsets.only(top: 6, right: 8),
+                                    decoration: pw.BoxDecoration(
+                                      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
-                                  ),
-                                  pw.TextSpan(
-                                    text:
-                                    '${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} ',
-                                    style: const pw.TextStyle(fontSize: 9),
-                                  ),
-                                ],
-                              ),
+                                  )
+                                      : pw.Text(_pNameCtrl.text, style: const pw.TextStyle(fontSize: 9)),
+                                ),
+                              ],
                             ),
                           ),
-                          // 年齢 (幅45)
+                          // 年齢 (幅60)
                           pw.SizedBox(
                             width: 60,
-                            child: pw.RichText(
-                              text: pw.TextSpan(
-                                children: [
-                                  pw.TextSpan(
-                                    text: '年齢: ',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
+                            child: pw.Row(
+                              mainAxisSize: pw.MainAxisSize.min,
+                              children: [
+                                pw.Text('年齢: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                pw.Expanded(
+                                  child: _pAgeCtrl.text.isEmpty
+                                      ? pw.Container(
+                                    margin: const pw.EdgeInsets.only(top: 6, right: 5),
+                                    decoration: pw.BoxDecoration(
+                                      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
-                                  ),
-                                  pw.TextSpan(
-                                    text: '${_pAgeCtrl.text}歳',
-                                    style: const pw.TextStyle(fontSize: 9),
-                                  ),
-                                ],
-                              ),
+                                  )
+                                      : pw.Text('${_pAgeCtrl.text}歳', style: const pw.TextStyle(fontSize: 9)),
+                                ),
+                              ],
                             ),
                           ),
                           // 性別 (幅45)
@@ -700,78 +694,60 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             child: pw.RichText(
                               text: pw.TextSpan(
                                 children: [
-                                  pw.TextSpan(
-                                    text: '性別: ',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
-                                    ),
-                                  ),
-                                  pw.TextSpan(
-                                    text: _pGender,
-                                    style: const pw.TextStyle(fontSize: 9),
-                                  ),
+                                  pw.TextSpan(text: '性別: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                  pw.TextSpan(text: _pGender, style: const pw.TextStyle(fontSize: 9)),
                                 ],
                               ),
                             ),
                           ),
-                          // 身長 (幅60)
+                          // 身長 (幅65) ★ご希望の仕様：下線 ＋ cm
                           pw.SizedBox(
-                            width: 60,
-                            child: pw.RichText(
-                              text: pw.TextSpan(
-                                children: [
-                                  pw.TextSpan(
-                                    text: '身長: ',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
+                            width: 65,
+                            child: pw.Row(
+                              mainAxisSize: pw.MainAxisSize.min,
+                              children: [
+                                pw.Text('身長: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                if (_pHeightCtrl.text.isEmpty) ...[
+                                  pw.Container(
+                                    width: 25,
+                                    margin: const pw.EdgeInsets.only(top: 6),
+                                    decoration: pw.BoxDecoration(
+                                      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
                                   ),
-                                  pw.TextSpan(
-                                    text: '${_pHeightCtrl.text}cm',
-                                    style: const pw.TextStyle(fontSize: 9),
-                                  ),
-                                ],
-                              ),
+                                  pw.Text('cm', style: const pw.TextStyle(fontSize: 9)),
+                                ] else
+                                  pw.Text('${_pHeightCtrl.text}cm', style: const pw.TextStyle(fontSize: 9)),
+                              ],
                             ),
                           ),
-                          // 体重 (幅60)
+                          // 体重 (幅65) ★ご希望の仕様：下線 ＋ kg
                           pw.SizedBox(
-                            width: 60,
-                            child: pw.RichText(
-                              text: pw.TextSpan(
-                                children: [
-                                  pw.TextSpan(
-                                    text: '体重: ',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
+                            width: 65,
+                            child: pw.Row(
+                              mainAxisSize: pw.MainAxisSize.min,
+                              children: [
+                                pw.Text('体重: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                if (_pWeightCtrl.text.isEmpty) ...[
+                                  pw.Container(
+                                    width: 25,
+                                    margin: const pw.EdgeInsets.only(top: 6),
+                                    decoration: pw.BoxDecoration(
+                                      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
                                   ),
-                                  pw.TextSpan(
-                                    text: '${_pWeightCtrl.text}kg',
-                                    style: const pw.TextStyle(fontSize: 9),
-                                  ),
-                                ],
-                              ),
+                                  pw.Text('kg', style: const pw.TextStyle(fontSize: 9)),
+                                ] else
+                                  pw.Text('${_pWeightCtrl.text}kg', style: const pw.TextStyle(fontSize: 9)),
+                              ],
                             ),
                           ),
                           // BMI
                           pw.RichText(
                             text: pw.TextSpan(
                               children: [
-                                pw.TextSpan(
-                                  text: 'BMI: ',
-                                  style: pw.TextStyle(
-                                    font: fontBold,
-                                    fontSize: 9,
-                                  ),
-                                ),
-                                pw.TextSpan(
-                                  text: bmiString,
-                                  style: pw.TextStyle(fontSize: 9),
-                                ),
+                                pw.TextSpan(text: 'BMI: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                pw.TextSpan(text: bmiString, style: pw.TextStyle(fontSize: 9)),
                               ],
                             ),
                           ),
@@ -781,41 +757,52 @@ class _MainRecordPageState extends State<MainRecordPage> {
                       pw.Divider(thickness: 0.3, color: PdfColors.grey300),
                       pw.SizedBox(height: 4),
 
-                      // ✨ 【2段目】病名
+                      // ✨ 【2段目】病名（未入力時は手書き用の下線を表示）
                       pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
                         children: [
                           pw.Text(
                             '術前診断: ',
                             style: pw.TextStyle(font: fontBold, fontSize: 9),
                           ),
                           pw.Expanded(
-                            child: pw.FittedBox(
-                              fit: pw.BoxFit.scaleDown,
-                              alignment: pw.Alignment.centerLeft,
-                              child: pw.Text(
-                                _pDiseaseCtrl.text,
-                                style: const pw.TextStyle(fontSize: 9),
+                            child: _pDiseaseCtrl.text.isEmpty
+                                ? pw.Container(
+                              margin: const pw.EdgeInsets.only(top: 6),
+                              decoration: pw.BoxDecoration(
+                                border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                               ),
+                            )
+                                : pw.Text(
+                              _pDiseaseCtrl.text,
+                              style: const pw.TextStyle(fontSize: 9),
+                              maxLines: 1,
                             ),
                           ),
                         ],
                       ),
-                      pw.SizedBox(height: 3),
-                      // ✨ 【3段目】術式
+                      pw.SizedBox(height: 4),
+
+                      // ✨ 【3段目】術式（未入力時は手書き用の下線を表示）
                       pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
                         children: [
                           pw.Text(
                             '予定術式: ',
                             style: pw.TextStyle(font: fontBold, fontSize: 9),
                           ),
                           pw.Expanded(
-                            child: pw.FittedBox(
-                              fit: pw.BoxFit.scaleDown,
-                              alignment: pw.Alignment.centerLeft,
-                              child: pw.Text(
-                                _pOpeCtrl.text,
-                                style: const pw.TextStyle(fontSize: 9),
+                            child: _pOpeCtrl.text.isEmpty
+                                ? pw.Container(
+                              margin: const pw.EdgeInsets.only(top: 6),
+                              decoration: pw.BoxDecoration(
+                                border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                               ),
+                            )
+                                : pw.Text(
+                              _pOpeCtrl.text,
+                              style: const pw.TextStyle(fontSize: 9),
+                              maxLines: 1,
                             ),
                           ),
                         ],
@@ -824,28 +811,27 @@ class _MainRecordPageState extends State<MainRecordPage> {
                       pw.Divider(thickness: 0.3, color: PdfColors.grey300),
                       pw.SizedBox(height: 4),
 
-                      // ✨ 【4段目】管理情報（ラベル削除・フォント打ち分け版）
+                      // ✨ 【4段目】管理情報（担当医の未入力時は手書き用の下線表示に対応）
                       pw.Row(
                         children: [
-                          // 担当医
+                          // 担当医 (幅160)
                           pw.SizedBox(
                             width: 160,
-                            child: pw.RichText(
-                              text: pw.TextSpan(
-                                children: [
-                                  pw.TextSpan(
-                                    text: '麻酔担当医: ',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
+                            child: pw.Row(
+                              mainAxisSize: pw.MainAxisSize.min,
+                              children: [
+                                pw.Text('麻酔担当医: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                pw.Expanded(
+                                  child: _anesthetistCtrl.text.isEmpty
+                                      ? pw.Container(
+                                    margin: const pw.EdgeInsets.only(top: 6, right: 15),
+                                    decoration: pw.BoxDecoration(
+                                      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
-                                  ),
-                                  pw.TextSpan(
-                                    text: _anesthetistCtrl.text,
-                                    style: const pw.TextStyle(fontSize: 9),
-                                  ),
-                                ],
-                              ),
+                                  )
+                                      : pw.Text(_anesthetistCtrl.text, style: const pw.TextStyle(fontSize: 9)),
+                                ),
+                              ],
                             ),
                           ),
                           // 手術時間
@@ -854,20 +840,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             child: pw.RichText(
                               text: pw.TextSpan(
                                 children: [
-                                  pw.TextSpan(
-                                    text: '手術時間: ',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
-                                    ),
-                                  ),
-                                  pw.TextSpan(
-                                    text: _calculateTotalMinutes(
-                                      _opStartTime,
-                                      _opEndTime,
-                                    ),
-                                    style: const pw.TextStyle(fontSize: 9),
-                                  ),
+                                  pw.TextSpan(text: '手術時間: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                  pw.TextSpan(text: _calculateTotalMinutes(_opStartTime, _opEndTime), style: const pw.TextStyle(fontSize: 9)),
                                 ],
                               ),
                             ),
@@ -878,20 +852,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             child: pw.RichText(
                               text: pw.TextSpan(
                                 children: [
-                                  pw.TextSpan(
-                                    text: '麻酔時間: ',
-                                    style: pw.TextStyle(
-                                      font: fontBold,
-                                      fontSize: 9,
-                                    ),
-                                  ),
-                                  pw.TextSpan(
-                                    text: _calculateTotalMinutes(
-                                      _anesthesiaStartTime,
-                                      _anesthesiaEndTime,
-                                    ),
-                                    style: const pw.TextStyle(fontSize: 9),
-                                  ),
+                                  pw.TextSpan(text: '麻酔時間: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
+                                  pw.TextSpan(text: _calculateTotalMinutes(_anesthesiaStartTime, _anesthesiaEndTime), style: const pw.TextStyle(fontSize: 9)),
                                 ],
                               ),
                             ),
@@ -903,8 +865,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 ),
 
                 // =========================================================================
-                // 【下部レイアウト】差し替えエリア
-                // 💡 左側にトレンド画像、右側にイベント・処置ログを配置します
+                // 【下部レイアウト】差し替えエリア（トレンド＋ログ）
                 // =========================================================================
                 pw.SizedBox(height: 10),
                 pw.Expanded(
@@ -919,14 +880,13 @@ class _MainRecordPageState extends State<MainRecordPage> {
                     ),
                   )
                       : pw.Row(
-                    // 👈 ここをRowに変更して左右に分割します
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       // --- 左側：トレンドキャプチャ画像 (全体の7割) ---
                       pw.Expanded(
                         flex: 7,
                         child: pw.Container(
-                          padding: const pw.EdgeInsets.all(5), // 内側に少し余白を作る
+                          padding: const pw.EdgeInsets.all(5),
                           decoration: pw.BoxDecoration(
                             border: pw.Border.all(
                               color: PdfColors.grey300,
@@ -946,7 +906,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   fontSize: 9,
                                 ),
                               ),
-                              pw.SizedBox(height: 5), // 見出しと画像の間のすきま
+                              pw.SizedBox(height: 5),
                               pw.Expanded(
                                 child: pw.Image(
                                   pw.MemoryImage(capturedImageBytes),
@@ -973,8 +933,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             ),
                           ),
                           child: pw.Column(
-                            crossAxisAlignment:
-                            pw.CrossAxisAlignment.start,
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
                               pw.Text(
                                 '【イベント・処置・メモ】',
@@ -984,10 +943,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                 ),
                               ),
                               pw.Divider(thickness: 0.5),
-                              // 💡 ここにログのテキストを抽出して表示するロジックを次に追加します
                               ..._buildPdfEventLogs(fontRegular),
-                              // 🌟 ここを追加：薬剤の合計も表示する
-                              //..._buildPdfDrugSummary(fontBold, fontRegular),
                             ],
                           ),
                         ),
@@ -1025,9 +981,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
         ..click();
       html.Url.revokeObjectUrl(url);
 
-      print('--- 【ログ】横向き3段PDF処理が正常終了しました ---');
+      print('--- 【ログ】縦向きPDF処理が正常終了しました ---');
     } catch (e) {
-      print('--- 【ログ】横向き3段PDF生成エラー: $e ---');
+      print('--- 【ログ】縦向きPDF生成エラー: $e ---');
     }
   }
 
