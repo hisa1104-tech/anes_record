@@ -204,17 +204,14 @@ class AnesthesiaDotPainter extends FlDotCirclePainter {
 }
 
 class _MainRecordPageState extends State<MainRecordPage> {
-  final TextEditingController _pIdCtrl = TextEditingController(text: '123456');
-  final TextEditingController _pNameCtrl = TextEditingController(text: '麻酔 太郎');
-  final TextEditingController _pAgeCtrl = TextEditingController(text: '35');
-  final TextEditingController _pHeightCtrl = TextEditingController(text: '170');
-  final TextEditingController _pWeightCtrl = TextEditingController(text: '65');
-  final TextEditingController _pDiseaseCtrl = TextEditingController(
-    text: '右下顎第三大臼歯完全埋伏智歯・含歯性嚢胞疑い',
-  );
-  final TextEditingController _pOpeCtrl = TextEditingController(
-    text: '静脈内鎮静法下・下顎水平埋伏智歯抜歯術及び嚢胞摘出術',
-  );
+  // 🌟 初期値を空っぽに変更（これで最初から文字が入るのを防ぎます）
+  final TextEditingController _pIdCtrl = TextEditingController(text: '');
+  final TextEditingController _pNameCtrl = TextEditingController(text: '');
+  final TextEditingController _pAgeCtrl = TextEditingController(text: '');
+  final TextEditingController _pHeightCtrl = TextEditingController(text: '');
+  final TextEditingController _pWeightCtrl = TextEditingController(text: '');
+  final TextEditingController _pDiseaseCtrl = TextEditingController(text: '');
+  final TextEditingController _pOpeCtrl = TextEditingController(text: '');
   String _pGender = '男';
   final TextEditingController _anesthetistCtrl = TextEditingController();
 
@@ -531,7 +528,37 @@ class _MainRecordPageState extends State<MainRecordPage> {
       return null;
     }
   }
-
+  // 🌟 追加：PDF出力前の最終確認ダイアログ
+  void _showPdfConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('PDF出力の確認', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          content: const Text(
+            'トレンドおよびタイムラインはアプリ上の表示がそのままキャプチャされます。\n\n'
+                '時間スケールの調整および未入力薬剤行の削除（ラベルをタップ）はお済みですか？\n\n'
+                'PDF出力してよろしいですか？',
+            style: TextStyle(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('キャンセル', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // ダイアログを閉じる
+                _generatePdf();         // PDF生成を実行
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              child: const Text('PDF出力する', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
   Future<void> _generatePdf() async {
     try {
       print('--- 【ログ】A4縦向き・3段コンパクトPDF生成スタート ---');
@@ -2349,11 +2376,12 @@ class _MainRecordPageState extends State<MainRecordPage> {
   }
 
   Widget _hdrField(
-    String label,
-    TextEditingController ctrl, {
-    double? width,
-    bool isNum = false,
-  }) {
+      String label,
+      TextEditingController ctrl, {
+        double? width,
+        bool isNum = false,
+        String? hintText, // 🌟 引数に hintText を追加
+      }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -2373,7 +2401,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
             child: TextField(
               controller: ctrl,
               keyboardType: isNum
-                  ? TextInputType.numberWithOptions(decimal: true)
+                  ? const TextInputType.numberWithOptions(decimal: true)
                   : TextInputType.text,
               onChanged: (_) => setState(() {}),
               style: const TextStyle(
@@ -2381,15 +2409,18 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
-              decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(
+              decoration: InputDecoration(
+                // 🌟 ヒントテキストの設定を追加
+                hintText: hintText,
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 10, fontWeight: FontWeight.normal),
+                contentPadding: const EdgeInsets.symmetric(
                   horizontal: 5,
                   vertical: 0,
                 ),
-                focusedBorder: OutlineInputBorder(
+                focusedBorder: const OutlineInputBorder(
                   borderSide: BorderSide(color: Colors.white, width: 1.2),
                 ),
-                enabledBorder: OutlineInputBorder(
+                enabledBorder: const OutlineInputBorder(
                   borderSide: BorderSide(color: Colors.white24),
                 ),
               ),
@@ -2408,15 +2439,18 @@ class _MainRecordPageState extends State<MainRecordPage> {
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.symmetric(
+                decoration: InputDecoration(
+                  // 🌟 こちらのヒントテキストの設定を追加（病名・術式用）
+                  hintText: hintText,
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 10, fontWeight: FontWeight.normal),
+                  contentPadding: const EdgeInsets.symmetric(
                     horizontal: 5,
                     vertical: 0,
                   ),
-                  focusedBorder: OutlineInputBorder(
+                  focusedBorder: const OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.white, width: 1.2),
                   ),
-                  enabledBorder: OutlineInputBorder(
+                  enabledBorder: const OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.white24),
                   ),
                 ),
@@ -2528,11 +2562,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             size: 18,
                           ),
                           const SizedBox(width: 6),
-                          _hdrField('ID:', _pIdCtrl, width: 65),
+                          _hdrField('ID:', _pIdCtrl, width: 65, hintText: '123456'), // 🌟 hintTextを追加
                           const SizedBox(width: 10),
-                          _hdrField('氏名:', _pNameCtrl, width: 100),
+                          _hdrField('氏名:', _pNameCtrl, width: 100, hintText: '麻酔 太郎'), // 🌟 hintTextを追加
                           const SizedBox(width: 10),
-                          _hdrField('年齢:', _pAgeCtrl, width: 35, isNum: true),
+                          _hdrField('年齢:', _pAgeCtrl, width: 35, isNum: true), //hintText: '35'), // 🌟 hintTextを追加
                           const SizedBox(width: 8),
                           const Text(
                             '性別:',
@@ -2697,7 +2731,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           // 👈 これを入れることで、ボタンを一番右端にシュッと押し寄せます！
 
                           // 💡 PDF出力ボタンのすぐ左側に、他とお揃いのデザインで配置
-                          _hdrField('担当医:', _anesthetistCtrl, width: 100),
+                          _hdrField('担当医:', _anesthetistCtrl, width: 100, hintText: '麻酔 科医'), // 🌟 担当医にも必要なら
 
                           const SizedBox(width: 12),
                           // 💡 ボタンとの間に綺麗な間隔を作ります
@@ -2706,7 +2740,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           SizedBox(
                             height: 24, // 👈 縦幅を24px（小さめ）にカチッと固定します
                             child: ElevatedButton.icon(
-                              onPressed: _generatePdf,
+                              onPressed: _showPdfConfirmationDialog,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.teal.shade600,
                                 foregroundColor: Colors.white,
@@ -2737,11 +2771,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
                       Row(
                         children: [
                           Expanded(
-                            child: _hdrField('病名:', _pDiseaseCtrl, width: null),
+                            child: _hdrField('病名:', _pDiseaseCtrl, width: null, hintText: '右下顎第三大臼歯完全埋伏智歯・含歯性嚢胞疑い'), // 🌟 hintTextを追加
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _hdrField('術式:', _pOpeCtrl, width: null),
+                            child: _hdrField('術式:', _pOpeCtrl, width: null, hintText: '下顎水平埋伏智歯抜歯術及び嚢胞摘出術'), // 🌟 hintTextを追加
                           ),
                         ],
                       ),
