@@ -632,15 +632,18 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           pw.SizedBox(
                             width: 90,
                             child: pw.Row(
-                              mainAxisSize: pw.MainAxisSize.min,
+                              crossAxisAlignment: pw.CrossAxisAlignment.center, // 💡 文字と下線の縦位置を中央に揃える
                               children: [
                                 pw.Text('患者ID: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 pw.Expanded(
                                   child: _pIdCtrl.text.isEmpty
                                       ? pw.Container(
-                                    margin: const pw.EdgeInsets.only(top: 6, right: 5),
+                                    height: 12, // 💡 コンテナ自体の高さを少し持たせる
+                                    margin: const pw.EdgeInsets.only(top: 8, right: 5), // 💡 topを6→8に増やして位置を下げました
                                     decoration: pw.BoxDecoration(
-                                      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
+                                      border: pw.Border(
+                                        bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5),
+                                      ),
                                     ),
                                   )
                                       : pw.Text(_pIdCtrl.text, style: const pw.TextStyle(fontSize: 9)),
