@@ -244,7 +244,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
   // === 💡 ここから輸液機能のために新しく追記 ===
   String _selectedFluidType = 'フィジオ140'; // プルダウンで今選ばれている輸液名を記憶する変数
   final TextEditingController _fluidController =
-      TextEditingController(); // 輸液の量を入力するテキスト欄のコントローラー
+  TextEditingController(); // 輸液の量を入力するテキスト欄のコントローラー
   // ===========================================
   String _selectedIvGauge = '22G';
   String _selectedIvSite = '左前腕';
@@ -260,16 +260,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
   String _selectedLaDrug = 'オーラ注';
 
   final TextEditingController _propofolBolusController =
-      TextEditingController();
+  TextEditingController();
   final TextEditingController _midazolamController = TextEditingController();
   final TextEditingController _acerioController = TextEditingController();
   final TextEditingController _ropionController = TextEditingController();
   final TextEditingController _laMlController = TextEditingController();
 
   final TextEditingController _customDrugNameController =
-      TextEditingController();
+  TextEditingController();
   final TextEditingController _customDrugAmountController =
-      TextEditingController();
+  TextEditingController();
   String _selectedCustomUnit = 'mg';
 
   final List<AnesthesiaEvent> _events = [
@@ -514,11 +514,48 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
   final GlobalKey _chartCaptureKey = GlobalKey();
 
+  // 🌟 PDF出力前の最終確認ポップアップ
+  void _showPdfConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('PDF出力の確認',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          content: const Text(
+            'トレンドおよびタイムラインはアプリ上の表示がそのままキャプチャされます。\n'
+                '時間スケールの調整および未入力薬剤はラベルをタップして削除してください。\n\n'
+                'PDF出力してよろしいですか？',
+            style: TextStyle(fontSize: 12),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                // 1. まずダイアログを閉じる
+                Navigator.pop(dialogContext);
+                // 2. 🌟 重要：ダイアログが消えるのを待ってからPDF生成を開始
+                // アニメーション中のキャプチャ失敗を防ぐため500ms待ちます
+                await Future.delayed(const Duration(milliseconds: 500));
+                _generatePdf();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.shade600),
+              child: const Text('PDF出力', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<Uint8List?> _captureChartImage(BuildContext context) async {
     try {
       final boundary =
-          _chartCaptureKey.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
+      _chartCaptureKey.currentContext?.findRenderObject()
+      as RenderRepaintBoundary?;
       if (boundary == null) return null;
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -636,7 +673,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   ),
                                   pw.TextSpan(
                                     text:
-                                        '${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} ',
+                                    '${_pNameCtrl.text.isEmpty ? "未入力" : _pNameCtrl.text} ',
                                     style: const pw.TextStyle(fontSize: 9),
                                   ),
                                 ],
@@ -880,90 +917,90 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 pw.Expanded(
                   child: capturedImageBytes == null
                       ? pw.Center(
-                          child: pw.Text(
-                            'データの取得に失敗しました',
-                            style: pw.TextStyle(
-                              font: fontRegular,
-                              fontSize: 11,
+                    child: pw.Text(
+                      'データの取得に失敗しました',
+                      style: pw.TextStyle(
+                        font: fontRegular,
+                        fontSize: 11,
+                      ),
+                    ),
+                  )
+                      : pw.Row(
+                    // 👈 ここをRowに変更して左右に分割します
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      // --- 左側：トレンドキャプチャ画像 (全体の7割) ---
+                      pw.Expanded(
+                        flex: 7,
+                        child: pw.Container(
+                          padding: const pw.EdgeInsets.all(5), // 内側に少し余白を作る
+                          decoration: pw.BoxDecoration(
+                            border: pw.Border.all(
+                              color: PdfColors.grey300,
+                              width: 0.5,
+                            ),
+                            borderRadius: const pw.BorderRadius.all(
+                              pw.Radius.circular(4),
                             ),
                           ),
-                        )
-                      : pw.Row(
-                          // 👈 ここをRowに変更して左右に分割します
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            // --- 左側：トレンドキャプチャ画像 (全体の7割) ---
-                            pw.Expanded(
-                              flex: 7,
-                              child: pw.Container(
-                                padding: const pw.EdgeInsets.all(5), // 内側に少し余白を作る
-                                decoration: pw.BoxDecoration(
-                                  border: pw.Border.all(
-                                    color: PdfColors.grey300,
-                                    width: 0.5,
-                                  ),
-                                  borderRadius: const pw.BorderRadius.all(
-                                    pw.Radius.circular(4),
-                                  ),
-                                ),
-                                child: pw.Column(
-                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                  children: [
-                                    pw.Text(
-                                      '【トレンド】',
-                                      style: pw.TextStyle(
-                                        font: fontBold,
-                                        fontSize: 9,
-                                      ),
-                                    ),
-                                    pw.SizedBox(height: 5), // 見出しと画像の間のすきま
-                                    pw.Expanded(
-                                      child: pw.Image(
-                                        pw.MemoryImage(capturedImageBytes),
-                                        fit: pw.BoxFit.contain,
-                                      ),
-                                    ),
-                                  ],
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(
+                                '【トレンド】',
+                                style: pw.TextStyle(
+                                  font: fontBold,
+                                  fontSize: 9,
                                 ),
                               ),
-                            ),
-                            pw.SizedBox(width: 10), // 左右の隙間
-                            // --- 右側：【イベント・処置・メモ】のテキスト表示 (全体の3割) ---
-                            pw.Expanded(
-                              flex: 3,
-                              child: pw.Container(
-                                padding: const pw.EdgeInsets.all(5),
-                                decoration: pw.BoxDecoration(
-                                  border: pw.Border.all(
-                                    color: PdfColors.grey300,
-                                    width: 0.5,
-                                  ),
-                                  borderRadius: const pw.BorderRadius.all(
-                                    pw.Radius.circular(4),
-                                  ),
-                                ),
-                                child: pw.Column(
-                                  crossAxisAlignment:
-                                      pw.CrossAxisAlignment.start,
-                                  children: [
-                                    pw.Text(
-                                      '【イベント・処置・メモ】',
-                                      style: pw.TextStyle(
-                                        font: fontBold,
-                                        fontSize: 9,
-                                      ),
-                                    ),
-                                    pw.Divider(thickness: 0.5),
-                                    // 💡 ここにログのテキストを抽出して表示するロジックを次に追加します
-                                    ..._buildPdfEventLogs(fontRegular),
-                                    // 🌟 ここを追加：薬剤の合計も表示する
-                                    //..._buildPdfDrugSummary(fontBold, fontRegular),
-                                  ],
+                              pw.SizedBox(height: 5), // 見出しと画像の間のすきま
+                              pw.Expanded(
+                                child: pw.Image(
+                                  pw.MemoryImage(capturedImageBytes),
+                                  fit: pw.BoxFit.contain,
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                      ),
+                      pw.SizedBox(width: 10), // 左右の隙間
+                      // --- 右側：【イベント・処置・メモ】のテキスト表示 (全体の3割) ---
+                      pw.Expanded(
+                        flex: 3,
+                        child: pw.Container(
+                          padding: const pw.EdgeInsets.all(5),
+                          decoration: pw.BoxDecoration(
+                            border: pw.Border.all(
+                              color: PdfColors.grey300,
+                              width: 0.5,
+                            ),
+                            borderRadius: const pw.BorderRadius.all(
+                              pw.Radius.circular(4),
+                            ),
+                          ),
+                          child: pw.Column(
+                            crossAxisAlignment:
+                            pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(
+                                '【イベント・処置・メモ】',
+                                style: pw.TextStyle(
+                                  font: fontBold,
+                                  fontSize: 9,
+                                ),
+                              ),
+                              pw.Divider(thickness: 0.5),
+                              // 💡 ここにログのテキストを抽出して表示するロジックを次に追加します
+                              ..._buildPdfEventLogs(fontRegular),
+                              // 🌟 ここを追加：薬剤の合計も表示する
+                              //..._buildPdfDrugSummary(fontBold, fontRegular),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
                 pw.SizedBox(height: 4),
@@ -1396,7 +1433,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                     icon: const Icon(Icons.delete_forever, color: Colors.red),
                     onPressed: () {
                       setState(
-                        () => _records.removeWhere((r) => r.id == record.id),
+                            () => _records.removeWhere((r) => r.id == record.id),
                       );
                       Navigator.pop(context);
                     },
@@ -1419,7 +1456,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                     children: [
                       ElevatedButton(
                         onPressed: () => setDialogState(
-                          () => targetTime = targetTime.subtract(
+                              () => targetTime = targetTime.subtract(
                             const Duration(minutes: 1),
                           ),
                         ),
@@ -1428,7 +1465,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                       const SizedBox(width: 10),
                       ElevatedButton(
                         onPressed: () => setDialogState(
-                          () => targetTime = targetTime.add(
+                              () => targetTime = targetTime.add(
                             const Duration(minutes: 1),
                           ),
                         ),
@@ -1590,51 +1627,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
     );
   }
 
-// 🌟 PDF出力前の最終確認ポップアップ
-  void _confirmPdfGenerationDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
-              SizedBox(width: 6),
-              Text('PDF出力の確認', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: const Text(
-            'トレンドおよびタイムラインはアプリ上の表示がそのままキャプチャされます。\n\n'
-                '時間スケールの調整および未入力薬剤行の削除（ラベルをタップ）はお済みですか？\n\n'
-                'PDF出力してよろしいですか？',
-            style: TextStyle(fontSize: 11, height: 1.4),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('キャンセル', style: TextStyle(color: Colors.grey, fontSize: 12)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                // 🌟 1. まず先にダイアログを確実に閉じます
-                Navigator.pop(dialogContext);
 
-                // 🌟 2. ダイアログが消えるのを一瞬（100ミリ秒）待ってからPDFを生成します
-                // これにより、contextが元のアプリ画面を正しく指すようになり、キャプチャが復活します！
-                await Future.delayed(const Duration(milliseconds: 100));
-                _generatePdf();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal.shade600,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-              child: const Text('出力する', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-  }
   /*List<Widget> _getVitalPins(double maxMinutes, double width) {
     if (_startTime == null || maxMinutes <= 0) return [];
     return _records.map((r) {
@@ -1695,7 +1688,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 title: 'ルート確保の修正',
                 initialTime: iv.time,
                 onDelete: () => setState(
-                  () => _ivRecords.removeWhere((i) => i.id == iv.id),
+                      () => _ivRecords.removeWhere((i) => i.id == iv.id),
                 ),
                 onUpdate: (nt, _) => setState(() {
                   int idx = _ivRecords.indexWhere((i) => i.id == iv.id);
@@ -1772,11 +1765,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
   }
 
   List<Widget> _getInfusionGraphics(
-    String key,
-    double maxMinutes,
-    double width,
-    Color color,
-  ) {
+      String key,
+      double maxMinutes,
+      double width,
+      Color color,
+      ) {
     List<Widget> elements = [];
     if (_startTime == null || maxMinutes <= 0) return elements;
     final points = _infusionMap[key]!;
@@ -1790,7 +1783,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
       if (i + 1 < points.length) {
         endM =
             points[i + 1].time.difference(_startTime!).inSeconds.toDouble() /
-            60;
+                60;
       }
       if (startM < 0) startM = 0;
       if (endM > maxMinutes) endM = maxMinutes;
@@ -1839,7 +1832,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 initialAmount: pt.isStop ? null : pt.val,
                 amountLabel: '設定値',
                 onDelete: () => setState(
-                  () => _infusionMap[key]!.removeWhere((p) => p.id == pt.id),
+                      () => _infusionMap[key]!.removeWhere((p) => p.id == pt.id),
                 ),
                 onUpdate: (nt, na) => setState(() {
                   int idx = _infusionMap[key]!.indexWhere((p) => p.id == pt.id);
@@ -1858,22 +1851,22 @@ class _MainRecordPageState extends State<MainRecordPage> {
               ),
               child: pt.isStop
                   ? Text(
-                      '┃',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                    )
+                '┃',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              )
                   : Text(
-                      displayVal,
-                      style: TextStyle(
-                        fontSize: 12, // 💡 文字サイズも 9.0 ➔ 9.5 へわずかに大きくして視認性アップ！
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                        backgroundColor: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
+                displayVal,
+                style: TextStyle(
+                  fontSize: 12, // 💡 文字サイズも 9.0 ➔ 9.5 へわずかに大きくして視認性アップ！
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  backgroundColor: Colors.white.withOpacity(0.9),
+                ),
+              ),
             ),
           ),
         ),
@@ -1883,11 +1876,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
   }
 
   List<Widget> _getBolusPins(
-    String drugFilter,
-    double maxMinutes,
-    double width,
-    Color color,
-  ) {
+      String drugFilter,
+      double maxMinutes,
+      double width,
+      Color color,
+      ) {
     List<Widget> pins = [];
     if (_startTime == null || maxMinutes <= 0) return pins;
 
@@ -1903,10 +1896,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
     if (drugFilter == '輸液' || drugFilter == _selectedFluidType) {
       double startMin =
           targets.first.time.difference(_startTime!).inSeconds.toDouble() /
-          60; // 👈 修正
+              60; // 👈 修正
       double endMin =
           targets.last.time.difference(_startTime!).inSeconds.toDouble() /
-          60; // 👈 修正
+              60; // 👈 修正
 
       double startX = (width * (startMin / maxMinutes)).clamp(0.0, width);
       double endX = (width * (endMin / maxMinutes)).clamp(0.0, width);
@@ -1952,7 +1945,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 initialAmount: displayAmount,
                 amountLabel: '投与量',
                 onDelete: () => setState(
-                  () => _bolusLogs.removeWhere((bl) => bl.id == b.id),
+                      () => _bolusLogs.removeWhere((bl) => bl.id == b.id),
                 ),
                 onUpdate: (nt, na) => setState(() {
                   int idx = _bolusLogs.indexWhere((bl) => bl.id == b.id);
@@ -1975,7 +1968,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                   color: color,
                   // 💡 輸液の時、引かれた横線と文字が重なっても数字がクッキリ浮き上がって読めるように白背景を敷きます
                   backgroundColor:
-                      (drugFilter == '輸液' || drugFilter == _selectedFluidType)
+                  (drugFilter == '輸液' || drugFilter == _selectedFluidType)
                       ? Colors.white.withOpacity(0.85)
                       : null,
                 ),
@@ -1989,11 +1982,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
   }
 
   List<Widget> _getDynamicCustomBolusPins(
-    String drugName,
-    double maxMinutes,
-    double width,
-    Color color,
-  ) {
+      String drugName,
+      double maxMinutes,
+      double width,
+      Color color,
+      ) {
     List<Widget> pins = [];
     if (_startTime == null || maxMinutes <= 0) return pins;
     final targets = _bolusLogs.where((b) => b.drugName == drugName);
@@ -2013,7 +2006,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 initialAmount: b.amount,
                 amountLabel: '投与量',
                 onDelete: () => setState(
-                  () => _bolusLogs.removeWhere((bl) => bl.id == b.id),
+                      () => _bolusLogs.removeWhere((bl) => bl.id == b.id),
                 ),
                 onUpdate: (nt, na) => setState(() {
                   int idx = _bolusLogs.indexWhere((bl) => bl.id == b.id);
@@ -2128,57 +2121,57 @@ class _MainRecordPageState extends State<MainRecordPage> {
       lineBarsData: _records.isEmpty
           ? []
           : [
-              LineChartBarData(
-                spots: sbpSpots,
-                color: Colors.red,
-                barWidth: 0,
-                dotData: FlDotData(
-                  show: true,
-                  getDotPainter: (s, p, b, i) => AnesthesiaDotPainter(
-                    type: 'sbp',
-                    customColor: Colors.red,
-                  ),
-                ),
-              ),
-              LineChartBarData(
-                spots: dbpSpots,
-                color: Colors.red,
-                barWidth: 0,
-                dotData: FlDotData(
-                  show: true,
-                  getDotPainter: (s, p, b, i) => AnesthesiaDotPainter(
-                    type: 'dbp',
-                    customColor: Colors.red,
-                  ),
-                ),
-              ),
-              LineChartBarData(
-                spots: hrSpots,
-                color: Colors.green,
-                barWidth: 1.2,
-                dotData: FlDotData(
-                  show: true,
-                  getDotPainter: (s, p, b, i) => AnesthesiaDotPainter(
-                    type: 'hr',
-                    customColor: Colors.green,
-                    customSize: 6,
-                  ),
-                ),
-              ),
-              LineChartBarData(
-                spots: spo2Spots,
-                color: Colors.cyan,
-                barWidth: 1.2,
-                dotData: FlDotData(
-                  show: true,
-                  getDotPainter: (s, p, b, i) => AnesthesiaDotPainter(
-                    type: 'spo2',
-                    customColor: Colors.cyan,
-                    customSize: 6,
-                  ),
-                ),
-              ),
-            ],
+        LineChartBarData(
+          spots: sbpSpots,
+          color: Colors.red,
+          barWidth: 0,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (s, p, b, i) => AnesthesiaDotPainter(
+              type: 'sbp',
+              customColor: Colors.red,
+            ),
+          ),
+        ),
+        LineChartBarData(
+          spots: dbpSpots,
+          color: Colors.red,
+          barWidth: 0,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (s, p, b, i) => AnesthesiaDotPainter(
+              type: 'dbp',
+              customColor: Colors.red,
+            ),
+          ),
+        ),
+        LineChartBarData(
+          spots: hrSpots,
+          color: Colors.green,
+          barWidth: 1.2,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (s, p, b, i) => AnesthesiaDotPainter(
+              type: 'hr',
+              customColor: Colors.green,
+              customSize: 6,
+            ),
+          ),
+        ),
+        LineChartBarData(
+          spots: spo2Spots,
+          color: Colors.cyan,
+          barWidth: 1.2,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (s, p, b, i) => AnesthesiaDotPainter(
+              type: 'spo2',
+              customColor: Colors.cyan,
+              customSize: 6,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -2212,11 +2205,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
             }
 
             Widget inputField(
-              String label,
-              String value,
-              int index,
-              Color color,
-            ) {
+                String label,
+                String value,
+                int index,
+                Color color,
+                ) {
               bool isActive = activeIndex == index;
               return GestureDetector(
                 onTap: () => setDialogState(() => activeIndex = index),
@@ -2331,20 +2324,20 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               children: row
                                   .map(
                                     (k) => Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(2.0),
-                                        child: ElevatedButton(
-                                          onPressed: () => pressKey(k),
-                                          child: Text(
-                                            k,
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                            ),
-                                          ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(2.0),
+                                    child: ElevatedButton(
+                                      onPressed: () => pressKey(k),
+                                      child: Text(
+                                        k,
+                                        style: const TextStyle(
+                                          fontSize: 15,
                                         ),
                                       ),
                                     ),
-                                  )
+                                  ),
+                                ),
+                              )
                                   .toList(),
                             ),
                         ],
@@ -2605,10 +2598,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               items: ['男', '女']
                                   .map(
                                     (v) => DropdownMenuItem(
-                                      value: v,
-                                      child: Text(v),
-                                    ),
-                                  )
+                                  value: v,
+                                  child: Text(v),
+                                ),
+                              )
                                   .toList(),
                               onChanged: (v) => setState(() => _pGender = v!),
                             ),
@@ -2754,7 +2747,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           SizedBox(
                             height: 24, // 👈 縦幅を24px（小さめ）にカチッと固定します
                             child: ElevatedButton.icon(
-                              onPressed: _confirmPdfGenerationDialog, // 🌟 ここを _generatePdf から変更！
+                              onPressed: _showPdfConfirmationDialog,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.teal.shade600,
                                 foregroundColor: Colors.white,
@@ -2820,14 +2813,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   padding: const EdgeInsets.all(6.0),
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       // 💡 3. トグルボタンも撮影に含める場合はこのまま内部に、
                                       // もし「トグルボタンはPDFに入れたくない」場合は外に出す必要がありますが、
                                       // レイアウトの一体性を維持するため、このRowの中に綺麗に収めています。
                                       Row(
                                         mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
+                                        MainAxisAlignment.spaceBetween,
                                         children: [
                                           const Text(
                                             '【 バイタルサイン・トレンド 】',
@@ -2849,8 +2842,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                               _selectedTimelineMinutes == 180,
                                             ],
                                             onPressed: (idx) => setState(
-                                              () => _selectedTimelineMinutes =
-                                                  idx == 0
+                                                  () => _selectedTimelineMinutes =
+                                              idx == 0
                                                   ? 10
                                                   : idx == 1
                                                   ? 30
@@ -2878,7 +2871,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 ),
                                               ),
                                               Text('1h', style: TextStyle(fontSize: 10.5,
-                                                ),
+                                              ),
                                               ),
                                               Text(
                                                 '2h',
@@ -2915,17 +2908,17 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                       Container(
                                                         width: 90,
                                                         padding:
-                                                            const EdgeInsets.only(
-                                                              left: 6,
-                                                              top: 10,
-                                                            ),
+                                                        const EdgeInsets.only(
+                                                          left: 6,
+                                                          top: 10,
+                                                        ),
                                                         child: Column(
                                                           crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .start,
+                                                          CrossAxisAlignment
+                                                              .start,
                                                           mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .start,
+                                                          MainAxisAlignment
+                                                              .start,
                                                           children: [
                                                             _verticalLegendItem(
                                                               'sBP',
@@ -2953,10 +2946,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                       Expanded(
                                                         child: Container(
                                                           padding:
-                                                              const EdgeInsets.only(
-                                                                right: 15,
-                                                                top: 4,
-                                                              ),
+                                                          const EdgeInsets.only(
+                                                            right: 15,
+                                                            top: 4,
+                                                          ),
                                                           child: LineChart(
                                                             _mainChartData(),
                                                           ),
@@ -2973,7 +2966,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   child: ListView(
                                                     shrinkWrap: true,
                                                     physics:
-                                                        const ClampingScrollPhysics(),
+                                                    const ClampingScrollPhysics(),
                                                     children: [
                                                       // 🌟 イベント行などは誤消去を防ぐため、rowKeyを渡さずタップ対象外（または消したいなら他と同様にifで囲む）にするのが安全です
                                                       _buildTimelineRow(
@@ -3126,7 +3119,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   padding: const EdgeInsets.all(6.0),
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         '【 記録一覧ログ 】',
@@ -3153,73 +3146,73 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 .where((e) => e.time != null)
                                                 .map(
                                                   (e) => Padding(
+                                                padding:
+                                                const EdgeInsets.symmetric(
+                                                  vertical: 1.0,
+                                                  horizontal: 2.0,
+                                                ),
+                                                child: InkWell(
+                                                  onTap: () =>
+                                                      _showEventTimeEditDialog(
+                                                        e,
+                                                      ),
+                                                  child: Padding(
                                                     padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 1.0,
-                                                          horizontal: 2.0,
-                                                        ),
-                                                    child: InkWell(
-                                                      onTap: () =>
-                                                          _showEventTimeEditDialog(
-                                                            e,
-                                                          ),
-                                                      child: Padding(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              vertical: 3.0,
-                                                              horizontal: 4.0,
-                                                            ),
-                                                        child: Text(
-                                                          '[${DateFormat('HH:mm').format(e.time!)}]  (${e.symbol}) ${e.name}',
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                color: Colors
-                                                                    .blueGrey,
-                                                                letterSpacing:
-                                                                    0.2,
-                                                              ),
-                                                        ),
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 3.0,
+                                                      horizontal: 4.0,
+                                                    ),
+                                                    child: Text(
+                                                      '[${DateFormat('HH:mm').format(e.time!)}]  (${e.symbol}) ${e.name}',
+                                                      style:
+                                                      const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                        FontWeight
+                                                            .bold,
+                                                        color: Colors
+                                                            .blueGrey,
+                                                        letterSpacing:
+                                                        0.2,
                                                       ),
                                                     ),
                                                   ),
                                                 ),
+                                              ),
+                                            ),
                                             ..._ivRecords.map(
-                                              (iv) => Padding(
+                                                  (iv) => Padding(
                                                 padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 1.0,
-                                                      horizontal: 2.0,
-                                                    ),
+                                                const EdgeInsets.symmetric(
+                                                  vertical: 1.0,
+                                                  horizontal: 2.0,
+                                                ),
                                                 child: InkWell(
                                                   onTap: () => _showEditDeleteDialog(
                                                     title: 'ルート確保の修正',
                                                     initialTime: iv.time,
                                                     onDelete: () => setState(
-                                                      () => _ivRecords
+                                                          () => _ivRecords
                                                           .removeWhere(
                                                             (i) =>
-                                                                i.id == iv.id,
-                                                          ),
+                                                        i.id == iv.id,
+                                                      ),
                                                     ),
                                                     onUpdate: (nt, _) =>
                                                         setState(() {
                                                           int idx = _ivRecords
                                                               .indexWhere(
                                                                 (i) =>
-                                                                    i.id ==
-                                                                    iv.id,
-                                                              );
+                                                            i.id ==
+                                                                iv.id,
+                                                          );
                                                           if (idx != -1)
                                                             _ivRecords[idx] =
                                                                 IvRecord(
                                                                   id: iv.id,
                                                                   time: nt,
                                                                   gauge:
-                                                                      iv.gauge,
+                                                                  iv.gauge,
                                                                   site: iv.site,
                                                                   isSuccess: iv
                                                                       .isSuccess,
@@ -3228,16 +3221,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   ),
                                                   child: Padding(
                                                     padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 3.0,
-                                                          horizontal: 4.0,
-                                                        ),
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 3.0,
+                                                      horizontal: 4.0,
+                                                    ),
                                                     child: Text(
                                                       '[${DateFormat('HH:mm').format(iv.time)}]  PV ${iv.gauge}/${iv.site} ', //-> ${iv.isSuccess ? "成功" : "失敗"}',
                                                       style: const TextStyle(
                                                         fontSize: 12,
                                                         fontWeight:
-                                                            FontWeight.bold,
+                                                        FontWeight.bold,
                                                         color: Colors.green,
                                                         letterSpacing: 0.2,
                                                       ),
@@ -3247,33 +3240,33 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                               ),
                                             ),
                                             ..._remarkLogs.map(
-                                              (rm) => Padding(
+                                                  (rm) => Padding(
                                                 padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 1.0,
-                                                      horizontal: 2.0,
-                                                    ),
+                                                const EdgeInsets.symmetric(
+                                                  vertical: 1.0,
+                                                  horizontal: 2.0,
+                                                ),
                                                 child: InkWell(
                                                   onTap: () => _showEditDeleteDialog(
                                                     title:
-                                                        '処置メモ No.${rm.number} の修正',
+                                                    '処置メモ No.${rm.number} の修正',
                                                     initialTime: rm.time,
                                                     initialAmount: rm.text,
                                                     amountLabel: 'メモ内容',
                                                     onDelete: () => setState(
-                                                      () {
+                                                          () {
                                                         _remarkLogs.removeWhere(
-                                                          (r) => r.id == rm.id,
+                                                              (r) => r.id == rm.id,
                                                         );
                                                         for (
-                                                          int i = 0;
-                                                          i <
-                                                              _remarkLogs
-                                                                  .length;
-                                                          i++
+                                                        int i = 0;
+                                                        i <
+                                                            _remarkLogs
+                                                                .length;
+                                                        i++
                                                         ) {
                                                           _remarkLogs[i]
-                                                                  .number =
+                                                              .number =
                                                               i + 1;
                                                         }
                                                       },
@@ -3283,35 +3276,35 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                           int idx = _remarkLogs
                                                               .indexWhere(
                                                                 (r) =>
-                                                                    r.id ==
-                                                                    rm.id,
-                                                              );
+                                                            r.id ==
+                                                                rm.id,
+                                                          );
                                                           if (idx != -1) {
                                                             _remarkLogs[idx] =
                                                                 RemarkLog(
                                                                   id: rm.id,
                                                                   time: nt,
                                                                   text:
-                                                                      na ??
+                                                                  na ??
                                                                       rm.text,
                                                                   number:
-                                                                      rm.number,
+                                                                  rm.number,
                                                                 );
                                                           }
                                                         }),
                                                   ),
                                                   child: Padding(
                                                     padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 3.0,
-                                                          horizontal: 4.0,
-                                                        ),
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 3.0,
+                                                      horizontal: 4.0,
+                                                    ),
                                                     child: Text(
                                                       '[${DateFormat('HH:mm').format(rm.time)}]  No.${rm.number}: ${rm.text}',
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         fontWeight:
-                                                            FontWeight.bold,
+                                                        FontWeight.bold,
                                                         color: Colors
                                                             .orange
                                                             .shade800,
@@ -3340,7 +3333,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             const SizedBox(height: 4),
 
                                             ..._infusionMap.entries.expand(
-                                              (entry) => entry.value.map((pt) {
+                                                  (entry) => entry.value.map((pt) {
                                                 String unit = '';
                                                 String displayName = entry.key;
 
@@ -3361,10 +3354,10 @@ class _MainRecordPageState extends State<MainRecordPage> {
 
                                                 return Padding(
                                                   padding:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 1.0,
-                                                        horizontal: 2.0,
-                                                      ),
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 1.0,
+                                                    horizontal: 2.0,
+                                                  ),
                                                   child: InkWell(
                                                     onTap: () => _showEditDeleteDialog(
                                                       title: '$displayName の修正',
@@ -3374,66 +3367,66 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                           : pt.val,
                                                       amountLabel: '設定値',
                                                       onDelete: () => setState(
-                                                        () =>
+                                                            () =>
                                                             _infusionMap[entry
-                                                                    .key]!
+                                                                .key]!
                                                                 .removeWhere(
                                                                   (p) =>
-                                                                      p.id ==
-                                                                      pt.id,
-                                                                ),
+                                                              p.id ==
+                                                                  pt.id,
+                                                            ),
                                                       ),
                                                       onUpdate: (nt, na) => setState(() {
                                                         int idx =
-                                                            _infusionMap[entry
-                                                                    .key]!
-                                                                .indexWhere(
-                                                                  (p) =>
-                                                                      p.id ==
-                                                                      pt.id,
-                                                                );
+                                                        _infusionMap[entry
+                                                            .key]!
+                                                            .indexWhere(
+                                                              (p) =>
+                                                          p.id ==
+                                                              pt.id,
+                                                        );
                                                         if (idx != -1) {
                                                           _infusionMap[entry
-                                                                      .key]![idx]
-                                                                  .time =
+                                                              .key]![idx]
+                                                              .time =
                                                               nt;
                                                           if (na != null)
                                                             _infusionMap[entry
-                                                                    .key]![idx] =
+                                                                .key]![idx] =
                                                                 InfusionPoint(
                                                                   id: pt.id,
                                                                   time: nt,
                                                                   val: na,
                                                                   isStop:
-                                                                      pt.isStop,
+                                                                  pt.isStop,
                                                                 );
                                                           _infusionMap[entry
-                                                                  .key]!
+                                                              .key]!
                                                               .sort(
                                                                 (a, b) => a.time
-                                                                    .compareTo(
-                                                                      b.time,
-                                                                    ),
-                                                              );
+                                                                .compareTo(
+                                                              b.time,
+                                                            ),
+                                                          );
                                                         }
                                                       }),
                                                     ),
                                                     child: Padding(
                                                       padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 3.0,
-                                                            horizontal: 4.0,
-                                                          ),
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 3.0,
+                                                        horizontal: 4.0,
+                                                      ),
                                                       child: Text(
                                                         logText,
                                                         style: TextStyle(
                                                           fontSize: 12,
                                                           fontWeight:
-                                                              FontWeight.bold,
+                                                          FontWeight.bold,
                                                           color: pt.isStop
                                                               ? Colors
-                                                                    .red
-                                                                    .shade700
+                                                              .red
+                                                              .shade700
                                                               : Colors.indigo,
                                                           letterSpacing: 0.2,
                                                         ),
@@ -3464,54 +3457,54 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                               }
                                               return Padding(
                                                 padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 1.0,
-                                                      horizontal: 2.0,
-                                                    ),
+                                                const EdgeInsets.symmetric(
+                                                  vertical: 1.0,
+                                                  horizontal: 2.0,
+                                                ),
                                                 child: InkWell(
                                                   onTap: () {
                                                     _showEditDeleteDialog(
                                                       title: '$displayName の修正',
                                                       initialTime: b.time,
                                                       initialAmount:
-                                                          displayAmount,
+                                                      displayAmount,
                                                       amountLabel: '投与量',
                                                       onDelete: () => setState(
-                                                        () => _bolusLogs
+                                                            () => _bolusLogs
                                                             .removeWhere(
                                                               (bl) =>
-                                                                  bl.id == b.id,
-                                                            ),
+                                                          bl.id == b.id,
+                                                        ),
                                                       ),
                                                       onUpdate: (nt, na) =>
                                                           setState(() {
                                                             int idx = _bolusLogs
                                                                 .indexWhere(
                                                                   (bl) =>
-                                                                      bl.id ==
-                                                                      b.id,
-                                                                );
+                                                              bl.id ==
+                                                                  b.id,
+                                                            );
                                                             if (idx != -1) {
                                                               String
                                                               finalAmount =
                                                                   na ??
-                                                                  displayAmount;
+                                                                      displayAmount;
                                                               if (b.drugName ==
                                                                   'LA') {
                                                                 String prefix =
                                                                     b.amount
                                                                         .split(
-                                                                          ' ',
-                                                                        )
+                                                                      ' ',
+                                                                    )
                                                                         .first;
                                                                 finalAmount =
-                                                                    '$prefix $finalAmount';
+                                                                '$prefix $finalAmount';
                                                               }
                                                               _bolusLogs[idx]
-                                                                      .time =
+                                                                  .time =
                                                                   nt;
                                                               _bolusLogs[idx]
-                                                                      .amount =
+                                                                  .amount =
                                                                   finalAmount;
                                                             }
                                                           }),
@@ -3519,18 +3512,18 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   },
                                                   child: Padding(
                                                     padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 3.0,
-                                                          horizontal: 4.0,
-                                                        ),
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 3.0,
+                                                      horizontal: 4.0,
+                                                    ),
                                                     child: Text(
                                                       '[${DateFormat('HH:mm').format(b.time)}]  $displayName: $displayAmount $unit',
                                                       style: const TextStyle(
                                                         fontSize: 12,
                                                         fontWeight:
-                                                            FontWeight.bold,
+                                                        FontWeight.bold,
                                                         color:
-                                                            Colors.deepPurple,
+                                                        Colors.deepPurple,
                                                         letterSpacing: 0.2,
                                                       ),
                                                     ),
@@ -3555,27 +3548,27 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             ),
                                             const SizedBox(height: 4),
                                             ..._records.map(
-                                              (r) => Padding(
+                                                  (r) => Padding(
                                                 padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 1.0,
-                                                      horizontal: 2.0,
-                                                    ),
+                                                const EdgeInsets.symmetric(
+                                                  vertical: 1.0,
+                                                  horizontal: 2.0,
+                                                ),
                                                 child: InkWell(
                                                   onTap: () =>
                                                       _showVitalEditDialog(r),
                                                   child: Padding(
                                                     padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 3.0,
-                                                          horizontal: 4.0,
-                                                        ),
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 3.0,
+                                                      horizontal: 4.0,
+                                                    ),
                                                     child: Text(
                                                       '[${DateFormat('HH:mm').format(r.dateTime)}]  ${r.sbp.toInt()}/${r.dbp.toInt()}  (HR:${r.hr.toInt()})  SpO2:${r.spo2.toInt()}%',
                                                       style: const TextStyle(
                                                         fontSize: 12,
                                                         fontWeight:
-                                                            FontWeight.bold,
+                                                        FontWeight.bold,
                                                         color: Colors.red,
                                                         letterSpacing: 0.2,
                                                       ),
@@ -3602,7 +3595,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             Builder(
                                               builder: (context) {
                                                 final o2Stats =
-                                                    _calculateO2Stats();
+                                                _calculateO2Stats();
                                                 return Container(
                                                   width: double.infinity,
                                                   padding: const EdgeInsets.all(
@@ -3611,25 +3604,25 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   decoration: BoxDecoration(
                                                     color: Colors.teal.shade50,
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
+                                                    BorderRadius.circular(
+                                                      4,
+                                                    ),
                                                     border: Border.all(
                                                       color:
-                                                          Colors.teal.shade100,
+                                                      Colors.teal.shade100,
                                                     ),
                                                   ),
                                                   child: Column(
                                                     crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
+                                                    CrossAxisAlignment
+                                                        .start,
                                                     children: [
                                                       Text(
                                                         '酸素投与総時間 : ${o2Stats['time']}',
                                                         style: const TextStyle(
                                                           fontSize: 11,
                                                           fontWeight:
-                                                              FontWeight.bold,
+                                                          FontWeight.bold,
                                                           color: Colors.teal,
                                                         ),
                                                       ),
@@ -3639,7 +3632,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                         style: const TextStyle(
                                                           fontSize: 11,
                                                           fontWeight:
-                                                              FontWeight.bold,
+                                                          FontWeight.bold,
                                                           color: Colors.teal,
                                                         ),
                                                       ),
@@ -3692,7 +3685,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         padding: const EdgeInsets.all(4),
                                         child: Column(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
+                                          CrossAxisAlignment.stretch,
                                           children: [
                                             const Text(
                                               'イベント',
@@ -3712,9 +3705,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                     height: 33,
                                                     child: Padding(
                                                       padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 1.5,
-                                                          ),
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 1.5,
+                                                      ),
                                                       child: InkWell(
                                                         onTap: () {
                                                           if (settled) {
@@ -3725,7 +3718,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                             setState(() {
                                                               _initStartTimeIfNeeded();
                                                               final now =
-                                                                  DateTime.now();
+                                                              DateTime.now();
                                                               e.time = now;
 
                                                               if (e.name ==
@@ -3733,17 +3726,17 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                                 _anesthesiaStartTime =
                                                                     now;
                                                               } else if (e
-                                                                      .name ==
+                                                                  .name ==
                                                                   '麻酔終了') {
                                                                 _anesthesiaEndTime =
                                                                     now;
                                                               } else if (e
-                                                                      .name ==
+                                                                  .name ==
                                                                   '手術開始') {
                                                                 _opStartTime =
                                                                     now;
                                                               } else if (e
-                                                                      .name ==
+                                                                  .name ==
                                                                   '手術終了') {
                                                                 _opEndTime =
                                                                     now;
@@ -3754,47 +3747,47 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                         child: Container(
                                                           height: 26,
                                                           padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 5,
-                                                              ),
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 5,
+                                                          ),
                                                           decoration: BoxDecoration(
                                                             color: settled
                                                                 ? Colors
-                                                                      .grey
-                                                                      .shade300
+                                                                .grey
+                                                                .shade300
                                                                 : e.activeColor
-                                                                      .withOpacity(
-                                                                        0.12,
-                                                                      ),
+                                                                .withOpacity(
+                                                              0.12,
+                                                            ),
                                                             border: Border.all(
                                                               color: settled
                                                                   ? Colors
-                                                                        .grey
-                                                                        .shade400
+                                                                  .grey
+                                                                  .shade400
                                                                   : e.activeColor
-                                                                        .withOpacity(
-                                                                          0.8,
-                                                                        ),
+                                                                  .withOpacity(
+                                                                0.8,
+                                                              ),
                                                               width: 1.1,
                                                             ),
                                                             borderRadius:
-                                                                BorderRadius.circular(
-                                                                  4,
-                                                                ),
+                                                            BorderRadius.circular(
+                                                              4,
+                                                            ),
                                                           ),
                                                           child: Row(
                                                             mainAxisAlignment:
-                                                                MainAxisAlignment
-                                                                    .spaceBetween,
+                                                            MainAxisAlignment
+                                                                .spaceBetween,
                                                             children: [
                                                               Text(
                                                                 '${e.symbol} ${e.name}',
                                                                 style: const TextStyle(
                                                                   fontSize:
-                                                                      10.0,
+                                                                  10.0,
                                                                   fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
+                                                                  FontWeight
+                                                                      .bold,
                                                                 ),
                                                               ),
                                                               if (settled)
@@ -3806,13 +3799,13 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                                   ),
                                                                   style: TextStyle(
                                                                     fontSize:
-                                                                        10.0,
+                                                                    10.0,
                                                                     color: Colors
                                                                         .blue
                                                                         .shade900,
                                                                     fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
+                                                                    FontWeight
+                                                                        .bold,
                                                                   ),
                                                                 ),
                                                             ],
@@ -3835,7 +3828,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                       flex: 5,
                                       child: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                         children: [
                                           Container(
                                             padding: const EdgeInsets.all(5),
@@ -3845,11 +3838,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 color: Colors.grey.shade300,
                                               ),
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                              BorderRadius.circular(4),
                                             ),
                                             child: Column(
                                               crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                              CrossAxisAlignment.start,
                                               children: [
                                                 const Text(
                                                   '輸液ルート確保',
@@ -3869,22 +3862,22 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                         fontSize: 11,
                                                         color: Colors.black,
                                                         fontWeight:
-                                                            FontWeight.bold,
+                                                        FontWeight.bold,
                                                       ),
                                                       items: ['20G', '22G', '24G']
                                                           .map(
                                                             (v) =>
-                                                                DropdownMenuItem(
-                                                                  value: v,
-                                                                  child: Text(
-                                                                    v,
-                                                                  ),
-                                                                ),
-                                                          )
+                                                            DropdownMenuItem(
+                                                              value: v,
+                                                              child: Text(
+                                                                v,
+                                                              ),
+                                                            ),
+                                                      )
                                                           .toList(),
                                                       onChanged: (v) => setState(
-                                                        () => _selectedIvGauge =
-                                                            v!,
+                                                            () => _selectedIvGauge =
+                                                        v!,
                                                       ),
                                                     ),
                                                     const SizedBox(width: 6),
@@ -3984,15 +3977,15 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                       setState(() {
                                                         _initStartTimeIfNeeded();
                                                         DateTime now =
-                                                            DateTime.now();
+                                                        DateTime.now();
                                                         _ivRecords.add(
                                                           IvRecord(
                                                             id: now.toString(),
                                                             time: now,
                                                             gauge:
-                                                                _selectedIvGauge,
+                                                            _selectedIvGauge,
                                                             site:
-                                                                _selectedIvSite,
+                                                            _selectedIvSite,
                                                             isSuccess: true,
                                                           ),
                                                         );
@@ -4001,7 +3994,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                             id: 'fluid_${now.toString()}',
                                                             time: now,
                                                             drugName:
-                                                                _selectedFluidType,
+                                                            _selectedFluidType,
                                                             amount: '0',
                                                             unit: 'mL',
                                                           ),
@@ -4010,15 +4003,15 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                     },
                                                     style: ElevatedButton.styleFrom(
                                                       backgroundColor:
-                                                          Colors.teal.shade600,
+                                                      Colors.teal.shade600,
                                                       foregroundColor:
-                                                          Colors.white,
+                                                      Colors.white,
                                                       padding: EdgeInsets.zero,
                                                       shape: RoundedRectangleBorder(
                                                         borderRadius:
-                                                            BorderRadius.circular(
-                                                              4,
-                                                            ),
+                                                        BorderRadius.circular(
+                                                          4,
+                                                        ),
                                                       ),
                                                     ),
                                                     child: const Text(
@@ -4026,7 +4019,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                       style: TextStyle(
                                                         fontSize: 11,
                                                         fontWeight:
-                                                            FontWeight.bold,
+                                                        FontWeight.bold,
                                                       ),
                                                     ),
                                                   ),
@@ -4044,40 +4037,40 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   color: Colors.grey.shade300,
                                                 ),
                                                 borderRadius:
-                                                    BorderRadius.circular(4),
+                                                BorderRadius.circular(4),
                                               ),
                                               child: Column(
                                                 crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                                CrossAxisAlignment.start,
                                                 children: [
                                                   const Text(
                                                     '処置メモ',
                                                     style: TextStyle(
                                                       fontSize: 10,
                                                       fontWeight:
-                                                          FontWeight.bold,
+                                                      FontWeight.bold,
                                                     ),
                                                   ),
                                                   const SizedBox(height: 2),
                                                   Expanded(
                                                     child: TextField(
                                                       controller:
-                                                          _remarkController,
+                                                      _remarkController,
                                                       maxLines: null,
                                                       expands: true,
                                                       style: const TextStyle(
                                                         fontSize: 11,
                                                       ),
                                                       decoration:
-                                                          const InputDecoration(
-                                                            hintText: '入力...',
-                                                            contentPadding:
-                                                                EdgeInsets.all(
-                                                                  4,
-                                                                ),
-                                                            border:
-                                                                OutlineInputBorder(),
-                                                          ),
+                                                      const InputDecoration(
+                                                        hintText: '入力...',
+                                                        contentPadding:
+                                                        EdgeInsets.all(
+                                                          4,
+                                                        ),
+                                                        border:
+                                                        OutlineInputBorder(),
+                                                      ),
                                                     ),
                                                   ),
                                                   const SizedBox(height: 4),
@@ -4085,18 +4078,18 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                     onPressed: _addRemark,
                                                     style: ElevatedButton.styleFrom(
                                                       backgroundColor:
-                                                          Colors.orange,
+                                                      Colors.orange,
                                                       foregroundColor:
-                                                          Colors.white,
+                                                      Colors.white,
                                                       minimumSize: const Size(
                                                         double.infinity,
                                                         32,
                                                       ),
                                                       shape: RoundedRectangleBorder(
                                                         borderRadius:
-                                                            BorderRadius.circular(
-                                                              4,
-                                                            ),
+                                                        BorderRadius.circular(
+                                                          4,
+                                                        ),
                                                       ),
                                                     ),
                                                     child: const Text(
@@ -4104,7 +4097,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                       style: TextStyle(
                                                         fontSize: 11,
                                                         fontWeight:
-                                                            FontWeight.bold,
+                                                        FontWeight.bold,
                                                       ),
                                                     ),
                                                   ),
@@ -4150,16 +4143,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         child: TextField(
                                           controller: _o2Controller,
                                           keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                           style: const TextStyle(fontSize: 11),
                                           decoration: const InputDecoration(
                                             hintText: 'L/min',
                                             contentPadding:
-                                                EdgeInsets.symmetric(
-                                                  horizontal: 4,
-                                                ),
+                                            EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
                                             border: OutlineInputBorder(),
                                           ),
                                         ),
@@ -4184,9 +4177,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   padding: EdgeInsets.zero,
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
+                                                    BorderRadius.circular(
+                                                      4,
+                                                    ),
                                                   ),
                                                 ),
                                                 child: const Text(
@@ -4210,9 +4203,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   padding: EdgeInsets.zero,
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
+                                                    BorderRadius.circular(
+                                                      4,
+                                                    ),
                                                   ),
                                                 ),
                                                 child: const Text(
@@ -4230,16 +4223,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         child: TextField(
                                           controller: _n2oController,
                                           keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                           style: const TextStyle(fontSize: 11),
                                           decoration: const InputDecoration(
                                             hintText: 'L/min',
                                             contentPadding:
-                                                EdgeInsets.symmetric(
-                                                  horizontal: 4,
-                                                ),
+                                            EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
                                             border: OutlineInputBorder(),
                                           ),
                                         ),
@@ -4260,14 +4253,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 },
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor:
-                                                      Colors.lightBlue.shade700,
+                                                  Colors.lightBlue.shade700,
                                                   foregroundColor: Colors.white,
                                                   padding: EdgeInsets.zero,
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
+                                                    BorderRadius.circular(
+                                                      4,
+                                                    ),
                                                   ),
                                                 ),
                                                 child: const Text(
@@ -4291,9 +4284,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   padding: EdgeInsets.zero,
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
+                                                    BorderRadius.circular(
+                                                      4,
+                                                    ),
                                                   ),
                                                 ),
                                                 child: const Text(
@@ -4379,24 +4372,24 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                               flex: 3,
                                               child: TextField(
                                                 controller:
-                                                    _propofolInfController,
+                                                _propofolInfController,
                                                 keyboardType:
-                                                    const TextInputType.numberWithOptions(
-                                                      decimal: true,
-                                                    ),
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
                                                 style: const TextStyle(
                                                   fontSize: 11,
                                                 ),
                                                 decoration:
-                                                    const InputDecoration(
-                                                      hintText: '速度',
-                                                      contentPadding:
-                                                          EdgeInsets.symmetric(
-                                                            horizontal: 4,
-                                                          ),
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                    ),
+                                                const InputDecoration(
+                                                  hintText: '速度',
+                                                  contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                    horizontal: 4,
+                                                  ),
+                                                  border:
+                                                  OutlineInputBorder(),
+                                                ),
                                               ),
                                             ),
                                             const SizedBox(width: 2),
@@ -4404,22 +4397,22 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                               value: _propofolInfUnit,
                                               isDense: true,
                                               items:
-                                                  ['mg/kg/h', 'mL/h', 'μg/mL']
-                                                      .map(
-                                                        (u) => DropdownMenuItem(
-                                                          value: u,
-                                                          child: Text(
-                                                            u,
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontSize: 9,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                      .toList(),
+                                              ['mg/kg/h', 'mL/h', 'μg/mL']
+                                                  .map(
+                                                    (u) => DropdownMenuItem(
+                                                  value: u,
+                                                  child: Text(
+                                                    u,
+                                                    style:
+                                                    const TextStyle(
+                                                      fontSize: 9,
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                                  .toList(),
                                               onChanged: (v) => setState(
-                                                () => _propofolInfUnit = v!,
+                                                    () => _propofolInfUnit = v!,
                                               ),
                                             ),
                                           ],
@@ -4442,14 +4435,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                 },
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor:
-                                                      Colors.purple,
+                                                  Colors.purple,
                                                   foregroundColor: Colors.white,
                                                   padding: EdgeInsets.zero,
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
+                                                    BorderRadius.circular(
+                                                      4,
+                                                    ),
                                                   ),
                                                 ),
                                                 child: const Text(
@@ -4475,9 +4468,9 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   padding: EdgeInsets.zero,
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
+                                                    BorderRadius.circular(
+                                                      4,
+                                                    ),
                                                   ),
                                                 ),
                                                 child: const Text(
@@ -4495,16 +4488,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         child: TextField(
                                           controller: _propofolBolusController,
                                           keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                           style: const TextStyle(fontSize: 11),
                                           decoration: const InputDecoration(
                                             hintText: 'mg',
                                             contentPadding:
-                                                EdgeInsets.symmetric(
-                                                  horizontal: 4,
-                                                ),
+                                            EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
                                             border: OutlineInputBorder(),
                                           ),
                                         ),
@@ -4523,7 +4516,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             padding: EdgeInsets.zero,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                              BorderRadius.circular(4),
                                             ),
                                           ),
                                           child: const Text(
@@ -4541,16 +4534,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         child: TextField(
                                           controller: _midazolamController,
                                           keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                           style: const TextStyle(fontSize: 11),
                                           decoration: const InputDecoration(
                                             hintText: 'mg',
                                             contentPadding:
-                                                EdgeInsets.symmetric(
-                                                  horizontal: 4,
-                                                ),
+                                            EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
                                             border: OutlineInputBorder(),
                                           ),
                                         ),
@@ -4569,7 +4562,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             padding: EdgeInsets.zero,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                              BorderRadius.circular(4),
                                             ),
                                           ),
                                           child: const Text(
@@ -4587,16 +4580,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         child: TextField(
                                           controller: _acerioController,
                                           keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                           style: const TextStyle(fontSize: 11),
                                           decoration: const InputDecoration(
                                             hintText: 'mg',
                                             contentPadding:
-                                                EdgeInsets.symmetric(
-                                                  horizontal: 4,
-                                                ),
+                                            EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
                                             border: OutlineInputBorder(),
                                           ),
                                         ),
@@ -4611,12 +4604,12 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor:
-                                                Colors.orange.shade800,
+                                            Colors.orange.shade800,
                                             foregroundColor: Colors.white,
                                             padding: EdgeInsets.zero,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                              BorderRadius.circular(4),
                                             ),
                                           ),
                                           child: const Text(
@@ -4634,16 +4627,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         child: TextField(
                                           controller: _ropionController,
                                           keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                           style: const TextStyle(fontSize: 11),
                                           decoration: const InputDecoration(
                                             hintText: 'mg',
                                             contentPadding:
-                                                EdgeInsets.symmetric(
-                                                  horizontal: 4,
-                                                ),
+                                            EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
                                             border: OutlineInputBorder(),
                                           ),
                                         ),
@@ -4662,7 +4655,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             padding: EdgeInsets.zero,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                              BorderRadius.circular(4),
                                             ),
                                           ),
                                           child: const Text(
@@ -4726,22 +4719,22 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                               child: TextField(
                                                 controller: _laMlController,
                                                 keyboardType:
-                                                    const TextInputType.numberWithOptions(
-                                                      decimal: true,
-                                                    ),
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
                                                 style: const TextStyle(
                                                   fontSize: 11,
                                                 ),
                                                 decoration:
-                                                    const InputDecoration(
-                                                      hintText: 'mL',
-                                                      contentPadding:
-                                                          EdgeInsets.symmetric(
-                                                            horizontal: 4,
-                                                          ),
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                    ),
+                                                const InputDecoration(
+                                                  hintText: 'mL',
+                                                  contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                    horizontal: 4,
+                                                  ),
+                                                  border:
+                                                  OutlineInputBorder(),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -4760,7 +4753,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                                   time: DateTime.now(),
                                                   drugName: 'LA',
                                                   amount:
-                                                      '$_selectedLaDrug ${_laMlController.text}',
+                                                  '$_selectedLaDrug ${_laMlController.text}',
                                                   unit: 'mL',
                                                 ),
                                               );
@@ -4773,7 +4766,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             padding: EdgeInsets.zero,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                              BorderRadius.circular(4),
                                             ),
                                           ),
                                           child: const Text(
@@ -4794,20 +4787,20 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                               flex: 3,
                                               child: TextField(
                                                 controller:
-                                                    _customDrugNameController,
+                                                _customDrugNameController,
                                                 style: const TextStyle(
                                                   fontSize: 10,
                                                 ),
                                                 decoration:
-                                                    const InputDecoration(
-                                                      hintText: '薬剤名',
-                                                      contentPadding:
-                                                          EdgeInsets.symmetric(
-                                                            horizontal: 4,
-                                                          ),
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                    ),
+                                                const InputDecoration(
+                                                  hintText: '薬剤名',
+                                                  contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                    horizontal: 4,
+                                                  ),
+                                                  border:
+                                                  OutlineInputBorder(),
+                                                ),
                                               ),
                                             ),
                                             const SizedBox(width: 2),
@@ -4815,24 +4808,24 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                               flex: 2,
                                               child: TextField(
                                                 controller:
-                                                    _customDrugAmountController,
+                                                _customDrugAmountController,
                                                 keyboardType:
-                                                    const TextInputType.numberWithOptions(
-                                                      decimal: true,
-                                                    ),
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
                                                 style: const TextStyle(
                                                   fontSize: 11,
                                                 ),
                                                 decoration:
-                                                    const InputDecoration(
-                                                      hintText: '量',
-                                                      contentPadding:
-                                                          EdgeInsets.symmetric(
-                                                            horizontal: 4,
-                                                          ),
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                    ),
+                                                const InputDecoration(
+                                                  hintText: '量',
+                                                  contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                    horizontal: 4,
+                                                  ),
+                                                  border:
+                                                  OutlineInputBorder(),
+                                                ),
                                               ),
                                             ),
                                             const SizedBox(width: 2),
@@ -4842,18 +4835,18 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                               items: ['mg', 'μg', 'mL', '管']
                                                   .map(
                                                     (u) => DropdownMenuItem(
-                                                      value: u,
-                                                      child: Text(
-                                                        u,
-                                                        style: const TextStyle(
-                                                          fontSize: 9,
-                                                        ),
-                                                      ),
+                                                  value: u,
+                                                  child: Text(
+                                                    u,
+                                                    style: const TextStyle(
+                                                      fontSize: 9,
                                                     ),
-                                                  )
+                                                  ),
+                                                ),
+                                              )
                                                   .toList(),
                                               onChanged: (v) => setState(
-                                                () => _selectedCustomUnit = v!,
+                                                    () => _selectedCustomUnit = v!,
                                               ),
                                             ),
                                           ],
@@ -4861,11 +4854,11 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         suffix: ElevatedButton(
                                           onPressed: () {
                                             String dName =
-                                                _customDrugNameController.text
-                                                    .trim();
+                                            _customDrugNameController.text
+                                                .trim();
                                             String dAmount =
-                                                _customDrugAmountController.text
-                                                    .trim();
+                                            _customDrugAmountController.text
+                                                .trim();
                                             if (dName.isEmpty ||
                                                 dAmount.isEmpty)
                                               return;
@@ -4879,12 +4872,12 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                           },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor:
-                                                Colors.grey.shade800,
+                                            Colors.grey.shade800,
                                             foregroundColor: Colors.white,
                                             padding: EdgeInsets.zero,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                              BorderRadius.circular(4),
                                             ),
                                           ),
                                           child: const Text(
@@ -4901,16 +4894,16 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                         child: TextField(
                                           controller: _fluidController,
                                           keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
                                           style: const TextStyle(fontSize: 11),
                                           decoration: const InputDecoration(
                                             hintText: 'mL',
                                             contentPadding:
-                                                EdgeInsets.symmetric(
-                                                  horizontal: 4,
-                                                ),
+                                            EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
                                             border: OutlineInputBorder(),
                                           ),
                                         ),
@@ -4938,7 +4931,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                             padding: EdgeInsets.zero,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
-                                                  BorderRadius.circular(4),
+                                              BorderRadius.circular(4),
                                             ),
                                           ),
                                           child: const Text(
