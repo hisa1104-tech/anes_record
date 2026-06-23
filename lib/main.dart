@@ -609,8 +609,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 pw.SizedBox(height: 6),
 
                 // =========================================================================
-                // 【上部レイアウト】3段構成（実際は4行）のコンパクト情報エリア
-                // =========================================================================
+// 【上部レイアウト】3段構成（実際は4行）のコンパクト情報エリア
+// =========================================================================
                 pw.Container(
                   padding: const pw.EdgeInsets.symmetric(
                     horizontal: 10,
@@ -625,25 +625,23 @@ class _MainRecordPageState extends State<MainRecordPage> {
                   ),
                   child: pw.Column(
                     children: [
-                      // ✨ 【1段目】患者情報（すべて未入力時は手書き用の下線表示に対応）
+                      // ✨ 【1段目】患者情報
                       pw.Row(
                         children: [
                           // 患者ID (幅90)
                           pw.SizedBox(
                             width: 90,
                             child: pw.Row(
-                              crossAxisAlignment: pw.CrossAxisAlignment.center, // 💡 文字と下線の縦位置を中央に揃える
+                              crossAxisAlignment: pw.CrossAxisAlignment.center,
                               children: [
                                 pw.Text('患者ID: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 pw.Expanded(
                                   child: _pIdCtrl.text.isEmpty
                                       ? pw.Container(
-                                    height: 12, // 💡 コンテナ自体の高さを少し持たせる
-                                    margin: const pw.EdgeInsets.only(top: 7, right: 5), // 💡 topを6→8に増やして位置を下げました
+                                    height: 12,
+                                    margin: const pw.EdgeInsets.only(top: 7, right: 5),
                                     decoration: pw.BoxDecoration(
-                                      border: pw.Border(
-                                        bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5),
-                                      ),
+                                      border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
                                   )
                                       : pw.Text(_pIdCtrl.text, style: const pw.TextStyle(fontSize: 9)),
@@ -655,12 +653,13 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           pw.SizedBox(
                             width: 130,
                             child: pw.Row(
-                              mainAxisSize: pw.MainAxisSize.min,
+                              crossAxisAlignment: pw.CrossAxisAlignment.center,
                               children: [
                                 pw.Text('氏名: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 pw.Expanded(
                                   child: _pNameCtrl.text.isEmpty
                                       ? pw.Container(
+                                    height: 12,
                                     margin: const pw.EdgeInsets.only(top: 6, right: 8),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
@@ -675,13 +674,14 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           pw.SizedBox(
                             width: 60,
                             child: pw.Row(
-                              mainAxisSize: pw.MainAxisSize.min,
+                              crossAxisAlignment: pw.CrossAxisAlignment.center,
                               children: [
                                 pw.Text('年齢: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 pw.Expanded(
                                   child: _pAgeCtrl.text.isEmpty
                                       ? pw.Container(
-                                    margin: const pw.EdgeInsets.only(top: 6, right: 5),
+                                    height: 12,
+                                    margin: const pw.EdgeInsets.only(top: 7, right: 5),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
@@ -703,17 +703,18 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               ),
                             ),
                           ),
-                          // 身長 (幅65) ★ご希望の仕様：下線 ＋ cm
+                          // 身長 (幅65) ★下線 ＋ cm
                           pw.SizedBox(
                             width: 65,
                             child: pw.Row(
-                              mainAxisSize: pw.MainAxisSize.min,
+                              crossAxisAlignment: pw.CrossAxisAlignment.center,
                               children: [
                                 pw.Text('身長: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 if (_pHeightCtrl.text.isEmpty) ...[
                                   pw.Container(
                                     width: 25,
-                                    margin: const pw.EdgeInsets.only(top: 6),
+                                    height: 12,
+                                    margin: const pw.EdgeInsets.only(top: 7),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
@@ -724,17 +725,18 @@ class _MainRecordPageState extends State<MainRecordPage> {
                               ],
                             ),
                           ),
-                          // 体重 (幅65) ★ご希望の仕様：下線 ＋ kg
+                          // 体重 (幅65) ★下線 ＋ kg
                           pw.SizedBox(
                             width: 65,
                             child: pw.Row(
-                              mainAxisSize: pw.MainAxisSize.min,
+                              crossAxisAlignment: pw.CrossAxisAlignment.center,
                               children: [
                                 pw.Text('体重: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 if (_pWeightCtrl.text.isEmpty) ...[
                                   pw.Container(
                                     width: 25,
-                                    margin: const pw.EdgeInsets.only(top: 6),
+                                    height: 12,
+                                    margin: const pw.EdgeInsets.only(top: 7),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
@@ -771,7 +773,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           pw.Expanded(
                             child: _pDiseaseCtrl.text.isEmpty
                                 ? pw.Container(
-                              margin: const pw.EdgeInsets.only(top: 6),
+                              height: 12,
+                              margin: const pw.EdgeInsets.only(top: 7),
                               decoration: pw.BoxDecoration(
                                 border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                               ),
@@ -797,7 +800,8 @@ class _MainRecordPageState extends State<MainRecordPage> {
                           pw.Expanded(
                             child: _pOpeCtrl.text.isEmpty
                                 ? pw.Container(
-                              margin: const pw.EdgeInsets.only(top: 6),
+                              height: 12,
+                              margin: const pw.EdgeInsets.only(top: 7),
                               decoration: pw.BoxDecoration(
                                 border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                               ),
@@ -814,20 +818,21 @@ class _MainRecordPageState extends State<MainRecordPage> {
                       pw.Divider(thickness: 0.3, color: PdfColors.grey300),
                       pw.SizedBox(height: 4),
 
-                      // ✨ 【4段目】管理情報（担当医の未入力時は手書き用の下線表示に対応）
+                      // ✨ 【4段目】管理情報
                       pw.Row(
                         children: [
                           // 担当医 (幅160)
                           pw.SizedBox(
                             width: 160,
                             child: pw.Row(
-                              mainAxisSize: pw.MainAxisSize.min,
+                              crossAxisAlignment: pw.CrossAxisAlignment.center,
                               children: [
                                 pw.Text('麻酔担当医: ', style: pw.TextStyle(font: fontBold, fontSize: 9)),
                                 pw.Expanded(
                                   child: _anesthetistCtrl.text.isEmpty
                                       ? pw.Container(
-                                    margin: const pw.EdgeInsets.only(top: 6, right: 15),
+                                    height: 12,
+                                    margin: const pw.EdgeInsets.only(top: 7, right: 15),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
