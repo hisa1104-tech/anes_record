@@ -639,7 +639,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   child: _pIdCtrl.text.isEmpty
                                       ? pw.Container(
                                     height: 12,
-                                    margin: const pw.EdgeInsets.only(top: 7, right: 5),
+                                    margin: const pw.EdgeInsets.only(top: 5, right: 5),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
