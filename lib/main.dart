@@ -540,7 +540,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                 // 2. 🌟 重要：ダイアログが消えるのを待ってからPDF生成を開始
                 // アニメーション中のキャプチャ失敗を防ぐため500ms待ちます
                 await Future.delayed(const Duration(milliseconds: 500));
-                _generatePdf();
+                _generatePdf;
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.shade600),
               child: const Text('PDF出力', style: TextStyle(color: Colors.white)),
