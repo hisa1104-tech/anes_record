@@ -639,7 +639,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   child: _pIdCtrl.text.isEmpty
                                       ? pw.Container(
                                     height: 12,
-                                    margin: const pw.EdgeInsets.only(top: 5, right: 5),
+                                    margin: const pw.EdgeInsets.only(top: 6, right: 5),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
@@ -681,7 +681,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   child: _pAgeCtrl.text.isEmpty
                                       ? pw.Container(
                                     height: 12,
-                                    margin: const pw.EdgeInsets.only(top: 7, right: 5),
+                                    margin: const pw.EdgeInsets.only(top: 6, right: 5),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
@@ -714,7 +714,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   pw.Container(
                                     width: 25,
                                     height: 12,
-                                    margin: const pw.EdgeInsets.only(top: 7),
+                                    margin: const pw.EdgeInsets.only(top: 6),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
@@ -736,7 +736,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   pw.Container(
                                     width: 25,
                                     height: 12,
-                                    margin: const pw.EdgeInsets.only(top: 7),
+                                    margin: const pw.EdgeInsets.only(top: 6),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
@@ -774,7 +774,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             child: _pDiseaseCtrl.text.isEmpty
                                 ? pw.Container(
                               height: 12,
-                              margin: const pw.EdgeInsets.only(top: 7),
+                              margin: const pw.EdgeInsets.only(top: 6),
                               decoration: pw.BoxDecoration(
                                 border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                               ),
@@ -801,7 +801,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                             child: _pOpeCtrl.text.isEmpty
                                 ? pw.Container(
                               height: 12,
-                              margin: const pw.EdgeInsets.only(top: 7),
+                              margin: const pw.EdgeInsets.only(top: 6),
                               decoration: pw.BoxDecoration(
                                 border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                               ),
@@ -832,7 +832,7 @@ class _MainRecordPageState extends State<MainRecordPage> {
                                   child: _anesthetistCtrl.text.isEmpty
                                       ? pw.Container(
                                     height: 12,
-                                    margin: const pw.EdgeInsets.only(top: 7, right: 15),
+                                    margin: const pw.EdgeInsets.only(top: 6, right: 15),
                                     decoration: pw.BoxDecoration(
                                       border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.5)),
                                     ),
